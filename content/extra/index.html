@@ -111,7 +111,7 @@
             lists: []
         },
         beforeMount() {
-            this.$http.get('./dist/lists.json',).then(res => {
+            this.$http.get('./extra/dist/lists.json',).then(res => {
                 this.lists = JSON.parse(res.bodyText); // 获取到数据
             })
         },
