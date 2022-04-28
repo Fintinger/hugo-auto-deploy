@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Blog|Extra</title>
-    <link rel="shortcut icon" href="./dist/favicon.ico"
+    <link rel="shortcut icon" href="./images/favicon.ico"
           type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
     <link href="https://cdn.bootcdn.net/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
@@ -111,7 +111,7 @@
             lists: []
         },
         beforeMount() {
-            this.$http.get('./extra/dist/lists.json',).then(res => {
+            this.$http.get('./data/lists.json',).then(res => {
                 this.lists = JSON.parse(res.bodyText); // 获取到数据
             })
         },
