@@ -32,6 +32,8 @@ Hello 陌生人，欢迎访问 Archai's blog
 
 √ 代码结构优化，取消背景图设定，用`video`标签的poster属性代替，新增几个个平台视频解析 <Mon Apr 04>
 
+√ 使用[vercel](https://vercel.com/)实现自动化部署 <Thu Apr 28>
+
 - bilibili：`bilibili AV号或BV号 分P号 >}}`
 - tencent：` tencent  b31563j0jqw >}}`
 - 自定义视频：`video src="./video.mp4" autoplay="true" poster="./video-poster.png" >}}`
