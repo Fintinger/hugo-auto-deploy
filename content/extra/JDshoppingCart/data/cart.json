@@ -1,0 +1,55 @@
+{
+  "allShop": {
+    "totalMoney": 0,
+    "shopList": [
+      {
+        "shopId": "1001",
+        "shopName": "锤子(smartisan) 坚果Pro3 12GB+256GB 松绿 骁龙855PLUS 4800万四摄 UFS3.0 全网通双卡双待 全面屏游戏手机",
+        "shopModel": "12GB+256GB 绿色，标准版 ",
+        "shopPrice":3399.00,
+        "shopNumber":1,
+        "shopImg": "images/pro3.webp"
+      },
+      {
+        "shopId": "1002",
+        "shopName": "华为 HUAWEI Mate 30 Pro 5G 麒麟990 OLED环幕屏双4000万徕卡电影四摄8GB+256GB丹霞橙5G全网通手机",
+        "shopModel": "丹霞橙，8GB+256GB",
+        "shopPrice":6899.00,
+        "shopNumber":1,
+        "shopImg": "images/mate30.webp"
+      },
+      {
+        "shopId": "1003",
+        "shopName": "荣耀20 李现同款 4800万超广角AI四摄 3200W美颜自拍 麒麟Kirin980全网通版8GB+128GB 幻影蓝 全面屏手机",
+        "shopModel": "幻影蓝，全网通（8GB 128GB）",
+        "shopPrice":2099.00,
+        "shopNumber":1,
+        "shopImg": "images/honor.webp"
+      },
+      {
+        "shopId": "1004",
+        "shopName": "落栗衬衣/衬衫 新品 男士商务休闲长袖衬衫 休闲时尚 简约舒适牛津纺男士衬衣 2019年秋季新品衬衫纯棉领尖扣",
+        "shopModel": "白，XXL",
+        "shopPrice":199.00,
+        "shopNumber":1,
+        "shopImg": "images/cloth.webp"
+      },
+      {
+        "shopId": "1005",
+        "shopName": "锤子坚果支架式蓝牙自拍杆通用自拍神器手机拍摄三角支架  360度旋转10米遥控拍摄 适用坚果小米华为等",
+        "shopModel": "",
+        "shopPrice":99.00,
+        "shopNumber":1,
+        "shopImg": "images/tphoto.webp"
+      },
+      {
+        "shopId": "1006",
+        "shopName": "锤子（smartisan） 坚果砖式蓝牙小音箱 无线迷你随身户外便携客厅家用小音响 青色",
+        "shopModel": "青色",
+        "shopPrice":109.00,
+        "shopNumber":1,
+        "shopImg": "images/music.webp"
+      }
+    ]
+  }
+}

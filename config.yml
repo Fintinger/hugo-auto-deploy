@@ -1,0 +1,231 @@
+baseURL: "https://www.fintinger.site"
+title: Archai's home
+paginate: 6
+theme: PaperMod
+
+enableInlineShortcodes: true
+enableRobotsTXT: true
+buildDrafts: false
+buildFuture: false
+buildExpired: false
+enableEmoji: true
+
+# googleAnalytics: UA-123-45
+
+minify:
+  disableXML: true
+  # minifyOutput: true
+
+outputs:
+    home:
+        - HTML
+        - RSS
+        - JSON
+
+DefaultContentLanguage: zh-cn
+
+permalinks:
+    posts: /p/:slug/
+    page: /:slug/
+
+params:
+  # env: production # to enable google analytics, opengraph, twitter-cards and schema.
+  title: "Archai's home"
+  description: ""
+            
+  keywords: [Blog, Portfolio, PaperMod]
+  author: Archai
+  # author: ["Me", "You"] # multiple authors
+  images: 
+  DateFormat: ":date_medium"
+  defaultTheme: light # dark, light
+  disableThemeToggle: false
+
+
+
+  ShowReadingTime: true
+  ShowShareButtons: false
+  ShowPostNavLinks: true
+  ShowBreadCrumbs: true
+  ShowCodeCopyButtons: true
+  disableSpecial1stPost: true
+  disableScrollToTop: false
+  comments: true
+  hidemeta: false
+  hideSummary: false
+  showtoc: true
+  tocopen: false
+
+  assets:
+    disableHLJS: false # to disable highlight.js
+    # disableFingerprinting: true
+    favicon: "images/favicon.ico"
+    favicon16x16: "images/favicon.ico"
+    favicon32x32: "images/favicon.ico"
+    # apple_touch_icon: "<link / abs url>"
+    # safari_pinned_tab: "<link / abs url>"
+
+  label:
+    text: "🛖Home"
+    # icon: https://gitee.com/fintinger/figure-bed/raw/master//images/20210530080206.ico
+    # iconHeight: 0
+
+#-------------------------------------------------------------
+  # profile-mode
+  profileMode:
+    enabled: true # needs to be explicitly set
+    title: ARCHAI
+    subtitle: 
+    imageUrl: "./images/head.gif"
+    imageWidth: 150
+    imageHeight: 150
+    imageTitle: my image
+    buttons:
+      - name: Posts
+        url: posts
+      - name: Extra
+        url: extra
+  
+#-------------------------------------------------------------
+
+  # # home-info mode
+#   homeInfoParams:
+#     Title: "Hi there \U0001F44B"
+#     Content: Welcome to my blog
+
+  socialIcons:
+    - name: jianshu
+      url: "https://www.jianshu.com/u/877812e0ca86"
+    - name: juejin
+      url: "https://juejin.cn/user/2629687547017246/posts"
+    - name: csdn
+      url: "https://blog.csdn.net/fintinger"
+    - name: github
+      url: "https://github.com/Fintinger/"
+    - name: zhihu
+      url: "https://www.zhihu.com/people/zi-fei-yu-an-zhi-wo-bu-zhi-yu"
+    - name: bilibili
+      url: "https://space.bilibili.com/341626809"  
+    - name: qq
+      url: "https://gitee.com/fintinger/figure-bed/raw/master/img/202203061823492.jpg"
+    - name: vx
+      url: "https://gitee.com/fintinger/figure-bed/raw/master/img/202203061823489.jpg"
+
+  # analytics:
+  #   google:
+  #     SiteVerificationTag: "XYZabc"
+  #   bing:
+  #     SiteVerificationTag: "XYZabc"
+  #   yandex:
+  #     SiteVerificationTag: "XYZabc"
+
+  cover:
+    hidden: true # hide everywhere but not in structured data
+    hiddenInList: false # hide on list pages and home
+    hiddenInSingle: true # hide on single page
+
+#  comments:
+#        enabled: true
+#        provider: waline
+#
+#        waline:
+#            serverURL: https://waline-q3l7of5hj-fintinger.vercel.app/
+#            visitor: true
+#            avatar: robohash
+#            emoji:
+#                - https://cdn.jsdelivr.net/gh/walinejs/emojis/weibo
+#                - https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili
+#                - https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq
+#                - https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/tieba
+#                - https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/tw-emoji
+#            requiredMeta:
+#                - name
+#                - email
+#                - url
+#            placeholder: 说点什么༼ つ ◕_◕ ༽つ
+#            locale:
+#                admin: Admin
+#            highlight: true
+  
+#-------------------------------------------------------------
+  # editPost:
+  #   URL: "https://github.com/<path_to_repo>/content"
+  #   Text: "Suggest Changes" # edit text
+  #   appendFilePath: true # to append file path to Edit link
+#-------------------------------------------------------------
+  # for search
+  # https://fusejs.io/api/options.html
+  fuseOpts:
+    isCaseSensitive: false
+    shouldSort: true
+    location: 0
+    distance: 1000
+    threshold: 0.4
+    minMatchCharLength: 0
+    keys: ["title", "permalink", "summary", "content"]
+  
+menu:
+  main:
+    - identifier: Posts
+      name: Posts📑
+      url: /posts/
+      weight: 2
+    - identifier: Categories
+      name: Categories🛒
+      url: /categories/
+      weight: 10
+    - identifier: Search
+      name: Search🔎
+      url: /search/
+      weight: 30
+    - identifier: archives
+      name: Timeline🕰️
+      url: /archives/
+      weight: 40
+    - identifier: About
+      name: About🥳
+      url: /about/
+      weight: 50
+    
+# Read: https://github.com/adityatelange/hugo-PaperMod/wiki/FAQs#using-hugos-syntax-highlighter-chroma
+# pygmentsUseClasses: true
+
+markup:
+    # tableOfContents:
+    #     endLevel: 4
+    #     ordered: true
+    #     startLevel: 2
+    highlight:
+      anchorLineNos: false
+      codeFences: true
+      guessSyntax: false
+      hl_Lines: ""
+      lineAnchors: ""
+      lineNoStart: 1
+      lineNos: false
+      lineNumbersInTable: true
+      noClasses: true
+      noHl: false
+      style: monokai
+      tabWidth: 4
+      # style: monokai
+      # tabWidth: 8
+    goldmark:
+      extensions:
+          definitionList: true
+          footnote: true
+          linkify: true
+          strikethrough: true
+          table: true
+          taskList: true
+          typographer: true
+    #     parser:
+    #         attribute:
+    #             block: false
+    #             title: true
+    #         autoHeadingID: true
+    #         autoHeadingIDType: github
+      renderer:
+          hardWraps: false
+          unsafe: true
+          xhtml: true

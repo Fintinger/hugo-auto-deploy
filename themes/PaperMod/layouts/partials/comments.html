@@ -1,0 +1,17 @@
+<script src='https://cdn.jsdelivr.net/gh/HCLonely/Valine@latest/dist/Valine.min.js'></script>
+<div id="veditor"></div>
+<script>
+    new Valine({
+        el: '#veditor',
+        appId: '6lUYMvIcPEdh8TJIHPL1V8sd-gzGzoHsz',
+        appKey: 'eQh9fRmGTn757NYWg7NfDETV',
+        master: '8c3025ceb5de0e61fe808054b49c325a',   //博主邮箱md5
+        tagMeta: ["博主","小伙伴","访客"],     //标识字段名
+        friends:  ["7d8fe1d694bf4369865cab91848fe390","3a1c312d1834ecdcb338e5cdbae3f1f7","5ce4f387d0aa4e0054cec9c03d50805d"],  //小伙伴邮箱Md5
+        // metaPlaceholder: {"nick":"昵称/QQ号","mail":"邮箱（完全保密）"},
+        placeholder: `可以在上方填写相关信息，支持Markdown语法`,
+        avatar: 'wavatar',
+        enableQQ: true,
+        pageSize:5,
+    })
+</script>

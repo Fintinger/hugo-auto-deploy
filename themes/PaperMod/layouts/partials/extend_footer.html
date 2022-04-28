@@ -1,0 +1,7 @@
+{{- /* Footer custom content area start */ -}}
+{{- /* Insert any custom code web-analytics, resources, etc. here */ -}}
+{{- /* Footer custom content area end */ -}}
+
+<!--自定义JS-->
+{{- $extendJS := (resources.Match "js/extended/*.js") | resources.Concat "assets/js/extended/extend.js" | fingerprint | minify }}
+<script src="{{ $extendJS.RelPermalink }}"></script>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <title>开车!</title>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        html,body{
+            width: 100%;
+            height: 100%;
+        }
+        .box{
+            margin: 0 auto;
+            width: 300px;
+            height: 100%;
+            border-left: 5px solid #555;
+            border-right: 5px solid #555;
+            position: relative;
+            overflow: hidden;
+            z-index: 99;
+            background: rgb(255,255,255);
+        }
+        .box::before{
+            position: absolute;
+            left: 80px;
+            content: "";
+            display: inline-block;
+            width: 1px;
+            height: 100%;
+            border-left: 1px dashed #ccc;
+        }
+        .box::after{
+            position: absolute;
+            right: 80px;
+            content: "";
+            display: inline-block;
+            width: 1px;
+            height: 100%;
+            border-left: 1px dashed #ccc;
+        }
+        .box .car{
+            display: inline-block;
+            width: 64px;
+            height: 64px;
+            background: url("images/car.png");
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            margin-left: -32px;
+        }
+        .box .block{
+            display: none;
+            width: 64px;
+            height: 64px;
+            background: url("images/block.png");
+            background-size: cover;
+            position: absolute;
+            left: 100px;
+            top: -70px;
+        }
+        .flower{
+            width: 48px;
+            height: 100%;
+            position: absolute;
+            background: url("images/flower.png") repeat-y;
+
+        }
+        .flower-left{left:-7px;}
+        .flower-right{right:-23px;}
+        /*.start{
+            width: 310px;
+            height: 120px;
+            position: absolute;
+            left: 50%;
+            top: 200px;
+            margin-left: -156px;
+            background: url("images/start.png");
+            cursor: pointer;
+            z-index: 999;
+        }*/
+        .start{
+            width: 310px;
+            height: 120px;
+            position: absolute;
+            left: 50%;
+            top: 200px;
+            margin-left: -155px;
+            padding: .3em .8em;
+            border: 1px solid rgba(0,0,0,.1);
+            background: #58a linear-gradient(hsla(0,0%,100%,.2),transparent);
+            border-radius: .2em;
+            box-shadow: 0 .05em .25em rgba(0,0,0,.5);
+            outline: none;
+            color: white;
+            text-shadow: 0 -.05em .05em rgba(0,0,0,.5);
+            font-size: 60px;
+            line-height: 1.5;
+            cursor: pointer;
+            z-index: 999;
+            background-color: #6b0;
+        }
+        #backShadow{
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: url("images/whir.png") no-repeat top;
+            background-size: cover;
+            z-index: 222;
+        }
+        .score{
+            display: none;
+            width: 300px;
+            height: 300px;
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            font-size: 20px;
+            font-weight: bolder;
+            color: #e91e63;
+
+        }
+        .speed{
+            position: absolute;
+            right: 20px;
+            bottom: 10px;
+            color: #ff0000;
+            font-size: 10px;
+            z-index: 55;
+        }
+        .score:before{
+            content: "得分:";
+        }
+        .lv{
+            color: #ff0000;
+            font-size: 50px;
+            display: none;
+        }
+        .layui-layer-content{
+            font-size: 20px!important;
+            background: transparent!important;
+        }
+        #jqmeter-container{
+           position: absolute;
+            bottom: 100px;
+            left: 20%;
+            width: 70%;
+            z-index: 9999;
+        }
+
+    </style>
+</head>
+<body>
+<div id="backShadow"></div>
+<div class="box">
+    <div class="flower flower-left"></div>
+    <div class="flower flower-right"></div>
+    <span class="block"></span>
+    <span class="car"></span>
+    <span class="score"></span>
+    <audio src="source/explode.mp3" id="explode"></audio>
+<!--    <audio src="source/racing.mp3" id="racing"></audio>-->
+    <span class="speed">speed:2000</span>
+    <div class="lv">lv1</div>
+
+</div>
+<!--<div class="start"></div>-->
+<div id="jqmeter-container"></div>
+<button class="start">start</button>
+
+
+
+<script src="js/jquery-3.4.1.min.js"></script>
+<script src="lib/layer/layer.js"></script>
+<script src="scrollBar/jqmeter.min.js"></script>
+<script>
+    $(document).ready(function () {
+        /*******************点击开始按钮*****************************/
+        $(".start").on("click",function () {
+            // var racingAudio=document.getElementById("racing")
+            $(".start").hide();
+            $("#jqmeter-container").show();
+            $('#jqmeter-container').jQMeter({
+                goal:'$100',
+                raised:'$100',
+                animationSpeed :5000,
+                counterSpeed: 5000
+            });
+            layer.msg("游戏加载中...",{time:5000},function () {
+                $("#jqmeter-container").hide();
+                $(".box").show();
+                $(".score").show();
+                $(".block").show();
+                $("#backShadow").css("z-index","2");
+                // $("#racing")[0].play();
+                // $("#racing")[0].currentTime=2;
+                // $("#racing")[0].loop=true;
+                /***********************************障碍移动*************************************/
+                var leftSkip=0,speed=2000;
+                var target=$(window).height(),skip=0,score=0;
+                var blockInter= setInterval(blockFn,speed);
+                function blockFn() {
+                    $(".block").animate({
+                        top:target
+                    },speed,"linear",function () {
+                        leftSkip=Math.random()*250;
+                        $(".block").css({"top":-70, "left":leftSkip});
+                    });
+                };
+                /*****************************************************************************/
+
+
+                /******************************背景***************************************/
+                var backInter= setInterval(backFn,10);
+                function backFn() {
+                    skip+=2;
+                    $(".flower").css("background-position-y",skip);
+
+                }
+                /******************************结束游戏*******************************/
+                var explodeAudio=document.getElementById("explode");
+                var gameOverInter=setInterval(gameOverFn,1);
+                function gameOverFn() {
+                    if ($(".car").position().top>$(".block").position().top&&$(".car").position().top<=$(".block").position().top+64&&$(".car").position().left>$(".block").position().left&&$(".car").position().left<=$(".block").position().left+64){
+                        explodeAudio.play();
+                        explodeAudio.currentTime=0;
+                        // $("#racing")[0].pause();
+                        clearInterval(blockInter);
+                        clearInterval(scoreInter);
+                        clearInterval(backInter);
+                        clearInterval(colorInter);
+                        $(".box .block").css("background","url(\"images/explode.png\")")
+                        var index =layer.alert("<br>"+"<br>"+"失败!最终得分："+score,{
+                            title:false,
+                            closeBtn:0,
+                            btn: ['重来']
+
+                        },function () {
+                            window.location.reload();
+                        });
+                        layer.style(index, {
+                            fontWeight:"bolder"
+                        });
+                    }
+                }
+                /*****************************************************************************/
+            //https://www.baidu.com/s?wd=%F0%9F%98%80&rsv_spt=1&rsv_iqid=0x8b7ef5ed0000c3c5&issp=1&f=8&rsv_bp=1&rsv_idx=2&ie=utf-8&tn=baiduhome_pg&rsv_enter=1&rsv_dl=tb&rsv_sug3=5&rsv_sug2=0&inputT=5675&rsv_sug4=7407
+                /****************************得分*************************************************/
+                var scoreInter = setInterval(scoreFn,100);
+                function scoreFn () {
+                    score+=1;
+                    $(".score").text(score)
+                }
+                /*****************************************************************************/
+
+                /*******************************键盘事件**********************************************/
+                $(document).keydown(function (ev) {
+                    var left=$(".car").offset().left;
+                    var top=$(".car").offset().top;
+                    console.log(ev.which);
+                    //小车移动
+                    switch (ev.which) {
+                        case 65://a
+                            $(".car").offset({left:Math.max(left-10,$(".box").offset().left)});
+                            break;
+                        case 68://d
+                            $(".car").offset({left:Math.min(left+10,
+                                    $(".box").offset().left+$(".box").width()-$(".car").width())});
+                            break;
+                        case 37:
+                            $(".car").offset({left:Math.max(left-10,$(".box").offset().left)});
+                            break;
+                        case 39:
+                            $(".car").offset({left:Math.min(left+10,
+                                    $(".box").offset().left+$(".box").width()-$(".car").width())});
+                            break;
+                        case 27:
+                            clearInterval(blockInter);
+                            clearInterval(backInter);
+                            clearInterval(gameOverInter);
+                            clearInterval(scoreInter);
+                            clearInterval(colorInter);
+                            $(".block").stop();
+                            layer.msg("按Enter键继续...");
+                            break;
+                        case 13:
+                            blockFn();
+                            blockInter=setInterval(blockFn,speed);
+                            backInter=setInterval(backFn,10);
+                            gameOverInter =setInterval(gameOverFn,1);
+                            scoreInter=setInterval(scoreFn,100);
+                            colorInter=setInterval(colorFn,10000);
+
+                    }
+
+                });
+                /*****************************************************************************/
+
+                var i=0,color=240;
+                var backColor="rgb("+color+','+color+','+color+')';
+                var lv=1;
+                /********************************更换背景***************************************/
+                var colorInter= setInterval(colorFn,10000);
+                function colorFn() {
+                    color>50?color-=10:color=50;
+                    lv+=1;
+                    backColor="rgb("+color+','+color+','+color+')';
+                    //speed值
+                    speed<=100?speed=100:speed-=100;
+                    $(".speed").text("speed:"+speed);
+                    $(".box").css("background",backColor);
+                    $(".lv").text("Lv"+lv);
+                    var index= layer.open({
+                        type:1,
+                        content:$(".lv"),
+                        time:1000,
+                        scrollbar:false,
+                        move:false,
+                        title:false,
+                        closeBtn:false,
+                        shade:0,
+                        offset: '100px'
+
+                    });
+                    layer.style(index, {
+                        background:"rgba(0,0,0,0)",
+                        border: "none",
+                        boxShadow: "none"
+                    });
+                }
+            })
+            })
+        })
+
+</script>
+</body>
+</html>

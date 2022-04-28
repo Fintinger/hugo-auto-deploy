@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Blog|Extra</title>
+    <link rel="shortcut icon" href="./dist/favicon.ico"
+          type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <link href="./dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        @media (min-width: 640px) {
+            html {
+                font-size: 32px;
+            }
+        }
+        @media (min-width: 1025px) {
+            html {
+                font-size: 16px;
+            }
+        }
+        .mask p {
+            display: none;
+        }
+
+        .mask:hover p {
+            display: block;
+        }
+
+        #app {
+            min-height: 80vh;
+        }
+        [v-clock]{
+            display: none;
+        }
+
+    </style>
+    <style>
+        @tailwind base;
+        @tailwind components;
+        @tailwind utilities;
+    </style>
+
+</head>
+<body class="bg-gray-200 ">
+<header class="w-full h-24 bg-gray-800 shadow-xl flex flex-row overflow-hidden">
+    <div class="logo h-full w-1/5"><a href="../"
+                                      style="display:inline-block;background:url('https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291855025.jpeg') center/cover;"
+                                      class="h-20 w-20 rounded-full ring-4 ring-inset ring-gray-200 ml-5 mt-2 transform transition duration-300 md:hover:rotate-180 cursor-pointer"></a>
+    </div>
+    <div class="h_right h-full w-4/5"></div>
+</header>
+<div class="w-full h-36 flex-col overflow-hidden border-solid border-gray-300 border-b">
+    <div class="content my-0 mx-auto md:w-max font-mono h-20 text-center">
+        <h1 class="mt-8 text-6xl   font-mono tracking-widest"><i class="text-purple-700 not-italic font-semibold">E</i>xtra
+        </h1>
+        <h2 class="text-gray-400 mt-5">分享有趣的Github开源小项目</h2>
+    </div>
+</div>
+<div v-cloak id="app"
+     class="flex flex-wrap sm:w-full xl:w-3/5  mx-auto px-5 pt-20 bg-gray-100 shadow-xl overflow-hidden">
+    <!--
+    xl:PC
+    md:pad
+    sm:mobile
+    -->
+    <div v-for="ls in lists.lists"
+         class="card rounded-md overflow-hidden lg:ml-7 mb-8  h-80 w-full xl:w-60 shadow-xl hover:shadow-2xl font-sans  transition duration-300 ease-in-out transform hover:translate-y-2">
+        <div :style="{backgroundImage: 'url(' + ls.img + ')', backgroundSize:'cover',backgroundPosition:'center', backgroundRepeat: 'no-repeat'}"
+             class="h-4/6 overflow-hidden">
+            <div class="mask bg-gray-700 bg-opacity-0 hover:bg-opacity-90 w-full h-full transition duration-300 ease-in-out overflow-hidden">
+                <p class="mx-auto mt-24 w-28 align-baseline text-gray-50 font-mono text-base hover:underline cursor-pointer">
+                    <svg style="display:inline" class="mb-1 mr-1" t="1629346450065" class="icon" viewBox="0 0 1024 1024"
+                         version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="3065" width="22" height="22">
+                        <path d="M512 42.666667A464.64 464.64 0 0 0 42.666667 502.186667 460.373333 460.373333 0 0 0 363.52 938.666667c23.466667 4.266667 32-9.813333 32-22.186667v-78.08c-130.56 27.733333-158.293333-61.44-158.293333-61.44a122.026667 122.026667 0 0 0-52.053334-67.413333c-42.666667-28.16 3.413333-27.733333 3.413334-27.733334a98.56 98.56 0 0 1 71.68 47.36 101.12 101.12 0 0 0 136.533333 37.973334 99.413333 99.413333 0 0 1 29.866667-61.44c-104.106667-11.52-213.333333-50.773333-213.333334-226.986667a177.066667 177.066667 0 0 1 47.36-124.16 161.28 161.28 0 0 1 4.693334-121.173333s39.68-12.373333 128 46.933333a455.68 455.68 0 0 1 234.666666 0c89.6-59.306667 128-46.933333 128-46.933333a161.28 161.28 0 0 1 4.693334 121.173333A177.066667 177.066667 0 0 1 810.666667 477.866667c0 176.64-110.08 215.466667-213.333334 226.986666a106.666667 106.666667 0 0 1 32 85.333334v125.866666c0 14.933333 8.533333 26.88 32 22.186667A460.8 460.8 0 0 0 981.333333 502.186667 464.64 464.64 0 0 0 512 42.666667"
+                              p-id="3066" fill="#e6e6e6"></path>
+                    </svg>
+                    <a target="_blank" :href=ls.githubLink||'javascript:;'>Github</a>
+                </p>
+                <p class="mx-auto mt-2 w-28 text-gray-50 font-mono text-base hover:underline cursor-pointer">
+                    <svg style="display:inline" class="mb-1 mr-1" t="1629347036092" class="icon" viewBox="0 0 1265 1024"
+                         version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4022" width="20" height="20">
+                        <path d="M1025.724758 311.892298A401.369796 401.369796 0 0 0 298.08016 182.41817a310.737906 310.737906 0 0 0 25.894826 621.475813 51.789651 51.789651 0 0 0 0-103.579302 207.158604 207.158604 0 0 1 0-414.317209h16.31374l5.178965-1.553689 4.40212-1.812638 4.661069-2.589483 3.884224-2.330534a27.707463 27.707463 0 0 0 4.143172-3.625276l3.366327-3.107379a20.456912 20.456912 0 0 0 3.107379-3.884223 22.787446 22.787446 0 0 0 3.107379-4.402121l1.294742-1.812638a298.049442 298.049442 0 0 1 557.515593 110.570905v1.55369a6.214758 6.214758 0 0 0 0 2.071586c0 2.589483 0 5.178965 1.812638 7.768448v1.553689a51.789651 51.789651 0 0 0 3.625276 7.768448 51.789651 51.789651 0 0 0 44.021203 25.894825h8.027396a133.876248 133.876248 0 0 1 21.751654-2.589482 142.42154 142.42154 0 0 1 0 284.843081H971.345624a51.789651 51.789651 0 0 0 0 103.579302h38.842239a245.741894 245.741894 0 0 0 15.536895-492.001685z"
+                              fill="#ededed" p-id="4023"></path>
+                        <path d="M781.795501 803.893983l-87.783458 87.783459V519.050902a38.842238 38.842238 0 0 0-77.684477 0v372.367591L528.803056 803.893983a38.842238 38.842238 0 0 0-54.89703 55.155978l153.815263 153.815264a35.734859 35.734859 0 0 0 12.170568 8.027396 41.949617 41.949617 0 0 0 13.983206 2.589482 38.065394 38.065394 0 0 0 14.501103-2.84843 38.842238 38.842238 0 0 0 13.206361-9.063189l153.556315-153.556316A38.842238 38.842238 0 1 0 781.795501 803.893983z"
+                              fill="#ededed" p-id="4024"></path>
+                    </svg>
+                    <a :href=ls.downloadLink||'javascript:;'>Download</a>
+                </p>
+            </div>
+
+        </div>
+        <div class="title h-1/6 cursor-pointer bg-white">
+            <a target="_blank" :href=ls.url style="display:block"
+               class="description w-full h-full  p-3  text-xl text-left font-bold hover:underline">{{ls.name}}</a>
+        </div>
+        <div class="description h-1/6  p-3 pt-0 cursor-pointer bg-white">
+            <p class="w-full h-full text-sm text-gray-500 break-all overflow-hidden text-left" :title=ls.des>
+                {{ls.des}}</p>
+        </div>
+    </div>
+</div>
+<footer class="bg-gray-900 w-full h-60 ">
+
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/vue-resource@1.5.3"></script>
+<script src="dist/vuejs.js"></script>
+</body>
+</html>

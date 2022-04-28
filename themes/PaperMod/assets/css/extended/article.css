@@ -1,0 +1,38 @@
+article.post-single .post-content a{
+    display: inline-block;
+    border-bottom: 1px solid var(--red-2);
+    color: var(--red-2);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0 2px;
+
+    transition: all .2s;
+}
+article.post-single .post-content a>*{
+    color: inherit;
+    background: inherit;
+}
+article.post-single .post-content a:hover{
+    color: var(--red-3);
+    transform: translateY(-2px);
+}
+
+article.post-single .post-content h1 a.anchor,
+article.post-single .post-content h2 a.anchor,
+article.post-single .post-content h3 a.anchor,
+article.post-single .post-content h4 a.anchor,
+article.post-single .post-content h5 a.anchor,
+article.post-single .post-content h6 a.anchor{
+    border-bottom: none;
+    color: var(--primary);
+}
+article.post-single .post-content h1:hover a.anchor,
+article.post-single .post-content h2:hover a.anchor,
+article.post-single .post-content h3:hover a.anchor,
+article.post-single .post-content h4:hover a.anchor,
+article.post-single .post-content h5:hover a.anchor,
+article.post-single .post-content h6:hover a.anchor{
+    border-bottom:none;
+    color: var(--primary);
+    transform: translateY(0);
+}

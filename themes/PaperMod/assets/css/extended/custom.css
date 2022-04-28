@@ -1,0 +1,45 @@
+.chroma {
+    background-color: unset;
+  }
+
+#menu{
+  font-weight: 500;
+}
+
+
+#menu span.active{
+font-weight: 700;
+ border: none;
+}
+
+#menu span:hover{
+  border-bottom:  4px solid rgb(124, 58, 237);
+}
+
+.main .buttons{
+  font-weight: 500;
+}
+.main .buttons>.button{
+  transition: all 0.2s ease-in-out;
+}
+.main .buttons>.button:hover{
+  color: aliceblue;
+  background-color: rgb(124, 58, 237);
+}
+
+
+/* article list */
+main.main > .post-entry{
+  transition: all 0.25s ease-in;
+}
+main.main > .post-entry:hover{
+  -moz-box-shadow:0px 3px 13px #BFBFBF; -webkit-box-shadow:0px 3px 13px #BFBFBF; box-shadow:0px 3px 13px #BFBFBF;
+}
+.post-content{
+  padding:10px 20px 10px 20px;
+  border: 1px solid var(--border);
+}
+
+.post-single>.post-content,.post-tags>li>a,.toc,.paginav{
+  background: #fff;
+}

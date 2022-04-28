@@ -1,0 +1,144 @@
+@media screen and (max-width: 520px ) {
+    .vpreview{
+        top: 135px!important;
+    }
+}
+#veditor {
+    /*background-image: url(https://cdn.jsdelivr.net/gh/drew233/cdn/20200409110727.webp);*/
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: right;
+    background-color: rgb(255, 255, 255);
+    resize: vertical;
+    padding: 20px;
+
+}
+
+#veditor:focus{
+    background-position-y: 200px;
+    transition: all 0.2s ease-in-out 0s;
+}
+#vcomments .vheader .vnick {
+    width: 31%;
+    border: 2px solid #dedede;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: 5px
+}
+
+#vcomments .vheader .vmail {
+    width: 31%;
+    border: 2px solid #dedede;
+    margin-left: 34px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: 5px
+}
+
+#vcomments .vheader .vlink {
+    width: 31%;
+    border: 2px solid #dedede;
+    margin-left: 34px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: 5px
+}
+img.vimg {
+    transition: all 1s   /* 旋转时间为 1s */
+}
+
+img.vimg:hover {
+    transform: rotate(360deg);
+    -webkit-transform: rotate(360deg);
+    -moz-transform: rotate(360deg);
+    -o-transform: rotate(360deg);
+    -ms-transform: rotate(360deg);
+}
+#vcomments .vcards .vcard {
+    padding: 15px 20px 0 20px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    box-shadow: 0 0 4px 1px rgba(0, 0, 0, .12);
+    transition: all .3s
+}
+
+#vcomments .vcards .vcard:hover {
+    box-shadow: 0 0 8px 3px rgba(0, 0, 0, .12)
+}
+
+#vcomments .vcards .vcard .vh .vcard {
+    border: none;
+    box-shadow: none;
+}
+.vcontent{
+    width:100%;
+    padding: 16px 40px 16px 20px;
+    border-radius: 8px;
+    background-color: rgba(236, 240, 241,1.0);
+}
+.vsys{
+    color:#fff!important;
+    background:rgba(142, 68, 173,.8);
+    border-radius: 5px!important;
+}
+.vsys>i{
+    margin-right: 5px;
+}
+.vtag{
+    border-radius: 5px!important;
+    line-height: 1.7rem!important;
+}
+.vat{
+    color:rgba(255,255,255,0)!important;
+    margin-top:-20px!important;
+    background:url("https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202204051141778.png") center/cover;
+}
+.vwrap{
+    position:relative;
+}
+.vedit{
+    width:50%;
+    border-right:1px solid #ccc!important;
+}
+.vpreview{
+    padding-top:20px!important;
+    display:block!important;
+    position:absolute;
+    right:0;
+    top:52px;
+    /*   background-color:#000!important; */
+    width:50%;
+    height:auto;
+}
+.vicon.vpreview-btn{
+    display:none!important;
+}
+.vctrl.text-right{
+    padding-right:20px;
+}
+.vcol.vcol-70.text-right>button{
+    width:200px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    font-weight: 500;
+    color: #fff;
+    background-color: rgb(189, 195, 199);
+    border: none;
+    border-radius: 45px;
+    transition: all 0.3s ease 0s;
+    cursor: pointer;
+    outline: none;
+}
+.vcol.vcol-70.text-right>button:hover {
+    background-color: #2EE59D;
+    color: #fff;
+    transform: translateY(-2px);
+}
+.vwrap>.vrow{
+    border-top:1px solid #cdcdcd;
+    margin-top:10px;
+}
+#veditor{
+    resize:none;
+}

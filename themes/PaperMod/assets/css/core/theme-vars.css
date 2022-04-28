@@ -1,0 +1,74 @@
+@font-face {
+    font-family: "jet-mono";
+    src: url("https://jqf.oss-cn-beijing.aliyuncs.com/fonts/JetBrainsMono-Bold.woff2");
+}
+
+:root {
+    font-size: 15px;
+
+    --gap: 24px;
+    --content-gap: 20px;
+    --nav-width: 1024px;
+    --main-width: 720px;
+    --header-height: 60px;
+    --footer-height: 60px;
+    --radius: 8px;
+
+    --red-2: rgb(242, 47, 39);
+    --red-3: rgb(204, 22, 22);
+
+    --theme-1:rgb(124, 58, 237);
+
+    --theme: rgb(255, 255, 255);
+    --entry: rgb(255, 255, 255);
+    --primary: rgb(30, 30, 30);
+    --secondary: rgb(108, 108, 108);
+    --tertiary: rgb(214, 214, 214);
+    --content: rgb(31, 31, 31);
+    --hljs-bg: rgb(41, 45, 62);
+    --code-bg: rgb(255, 243, 240);
+    --code-color: var(--theme-1);
+    --border: rgb(230, 230, 230);
+    --h2-border: var(--theme-1);
+
+
+    --mid-7: rgb(140 140 140);
+}
+
+.dark {
+    --theme: rgb(29, 30, 32);
+    --entry: rgb(46, 46, 51);
+    --primary: rgb(218, 218, 219);
+    --secondary: rgb(155, 156, 157);
+    --tertiary: rgb(65, 66, 68);
+    --content: rgb(196, 196, 197);
+    --hljs-bg: rgb(46, 46, 51);
+    --code-bg: rgb(62 62 62);
+    --border: rgb(51, 51, 51);
+    --theme-1: var(--red-2);
+    --code-color: var(--theme-1);
+    --h2-border: var(--theme-1);
+}
+
+.list {
+    /* background: var(--code-bg); */
+}
+
+.dark.list {
+    background: var(--theme);
+}
+.animate__delay-200ms{
+    animation-delay: 200ms;
+}
+.animate__delay-400ms{
+    animation-delay: 400ms;
+}
+.animate__delay-600ms{
+    animation-delay: 600ms;
+}
+.animate__delay-800ms{
+    animation-delay: 800ms;
+}
+.animate__delay-1000ms{
+    animation-delay: 1s;
+}
