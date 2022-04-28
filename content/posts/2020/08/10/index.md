@@ -6,7 +6,6 @@ tags:
 categories:
   - 前端
   - 学习总结
-weight: 3
 ---
 
 > 学习地址:https://www.bilibili.com/video/BV1WC4y1b78y，主要通过express的简单功能来搭建本地的服务，进而更好地学习Ajax
