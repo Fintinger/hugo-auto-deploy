@@ -2,7 +2,7 @@
   "lists":[
     {
       "name": "MusicPlayer",
-      "url": "./musicPlayer",
+      "url": "./extra/musicPlayer",
       "des": "一个美观简洁的音乐播放器",
       "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291836032.png",
       "githubLink": "",
@@ -10,7 +10,7 @@
     },
     {
       "name": "JD-ShoppingCart",
-      "url": "./JDshoppingCart",
+      "url": "./extra/JDshoppingCart",
       "des": "基于vue.js实现的仿京东购物车页面",
       "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291837479.jpeg",
       "githubLink": "https://github.com/Fintinger/JDshoppingcart.git",
@@ -18,7 +18,7 @@
     },
     {
       "name": "Smartisan.com",
-      "url": "./Smartisan",
+      "url": "./extra/Smartisan",
       "des": "仿写锤子官网",
       "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291837154.jpeg",
       "githubLink": "https://github.com/Fintinger/Smartisan.com.git",
@@ -26,7 +26,7 @@
     },
     {
       "name": "MyMusicPlayer",
-      "url": "./MyMusicPlayer",
+      "url": "./extra/MyMusicPlayer",
       "des": "利用大佬开发的网易云音乐API写的一款具有搜索功能的音乐播放器(无法在线体验)",
       "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291838694.jpeg",
       "githubLink": "https://github.com/Fintinger/MyMusicPlayer.git",
@@ -34,7 +34,7 @@
     },
     {
       "name": "赛车小游戏",
-      "url": "./oneGame",
+      "url": "./extra/oneGame",
       "des": "初学jquery时做的一个小游戏",
       "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291838609.png",
       "githubLink": "https://github.com/Fintinger/One-Game.git",
@@ -42,7 +42,7 @@
     },
     {
       "name": "TodoList",
-      "url": "./todoList",
+      "url": "./extra/todoList",
       "des": "Vue2.0做的一个todoList",
       "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291853306.png",
       "githubLink": "https://github.com/Fintinger/TodoListv1.0.git",
