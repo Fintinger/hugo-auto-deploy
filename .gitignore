@@ -1,3 +1,5 @@
 .idea/
 public/
 resources/
+push.sh
+server.bat
