@@ -5,3 +5,8 @@
 <!--自定义CSS-->
 {{- $externalCSS := (resources.Match "css/external/*.css") | resources.Concat "assets/css/external/external.css"}}
 <link crossorigin="anonymous" href="{{ $externalCSS.RelPermalink }}" rel="preload stylesheet" as="style">
+
+<!--scss语法-->
+{{ $sass := resources.Get "scss/style.scss" }}
+{{ $style := $sass | resources.ToCSS | minify | resources.Fingerprint "sha256" }}
+<link rel="stylesheet" href="{{ $style.RelPermalink }}">

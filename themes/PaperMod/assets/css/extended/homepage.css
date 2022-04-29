@@ -1,7 +1,8 @@
-body{
+body {
     background: #f5f5f5;
 }
-main > div.profile > div.profile_inner{
+
+main > div.profile > div.profile_inner {
     position: relative;
     padding: 30px;
     overflow: hidden;
@@ -10,24 +11,28 @@ main > div.profile > div.profile_inner{
 
     user-select: none;
 
-    box-shadow: -17px 25px 33px -15px rgba(0,0,0,0.75);
-    -webkit-box-shadow: -17px 25px 33px -15px rgba(0,0,0,0.75);
-    -moz-box-shadow: -17px 25px 33px -15px rgba(0,0,0,0.75);
+    box-shadow: -17px 25px 33px -15px rgba(0, 0, 0, 0.75);
+    -webkit-box-shadow: -17px 25px 33px -15px rgba(0, 0, 0, 0.75);
+    -moz-box-shadow: -17px 25px 33px -15px rgba(0, 0, 0, 0.75);
 
     opacity: 0.1;
     transition: opacity 1s;
 }
-.profile_inner::before{
+
+.profile_inner::before {
     content: "";
     position: absolute;
-    top: 0;left:0;
-    right: 0;bottom: 0;
-    background: url("https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202204051521692.png") no-repeat  center/cover fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202204051521692.png") no-repeat center/cover fixed;
     filter: blur(10px);
     z-index: -1;
     margin: -20px;
 }
-#liveBgBox{
+
+#liveBgBox {
     display: block;
     z-index: -2;
     position: absolute;
@@ -38,10 +43,23 @@ main > div.profile > div.profile_inner{
     object-fit: cover;
 }
 
-.social-icons svg{
+/*.social-icons svg {
     transition: all .5s;
 }
-.social-icons svg:hover{
+
+.social-icons svg:hover {
     fill: #fff;
-    stroke:#fff;
+    stroke: #fff;
+}*/
+
+#menu > li {
+    transition: border .2s ease;
+    outline: none;
+    cursor: pointer;
+    user-select: none;
+}
+
+#menu li.active {
+    font-weight: 500;
+    border-bottom: 2px solid currentColor;
 }
