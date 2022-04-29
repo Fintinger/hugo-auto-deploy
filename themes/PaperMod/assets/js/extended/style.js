@@ -2,18 +2,25 @@
 if (document.getElementsByClassName("profile")[0]) {
     document.documentElement.style.overflowY = 'hidden'
     // document.querySelector(".logo-switches").style.display = "none"
-    document.querySelectorAll("#menu>li>a>span").forEach(e=>{
-        e.style.color="#fff"
+    document.querySelectorAll("#menu>li>a>span").forEach(e => {
+        e.style.color = "#fff"
     });
-    document.querySelector(".logo>a").style.color="#fff";
+    document.querySelector(".logo>a").style.color = "#fff";
 
-    let mask= document.querySelector("main > div.profile > div.profile_inner");
-    mask.addEventListener("mouseenter",e=>{
-        e.target.style.opacity=1;
+    let mask = document.querySelector("main > div.profile > div.profile_inner");
+    mask.addEventListener("mouseenter", e => {
+        e.target.style.opacity = '1';
     });
-    mask.addEventListener("mouseleave",e=>{
-        e.target.style.opacity=.1;
+    mask.addEventListener("mouseleave", e => {
+        e.target.style.opacity = '.1';
     })
+    //给header和main添加特殊class
+    document.querySelector('header.header').classList.add('homepage')
+    main.classList.add('homepage')
+    //首页且是PC端删除主题切换按钮
+    if (!isMobile()) {
+        document.querySelector('.logo-switches').classList.add('hidden')
+    }
 }
 
 //在文章列表控制
@@ -62,7 +69,7 @@ function printTags(className) {
         "#1dd1a1", "#00a8ff", "#fbc531", "#4cd137", "#487eb0",
         "#e84118", "#353b48"]
     Array.from(postTags.children).forEach(el => {
-        el.querySelector("a").style.background = artBoard[Math.round(Math.random() * (artBoard.length-1))]
+        el.querySelector("a").style.background = artBoard[Math.round(Math.random() * (artBoard.length - 1))]
     })
 }
 

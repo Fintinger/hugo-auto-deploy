@@ -1,9 +1,9 @@
 const body = document.body;
-
 const menuList = document.querySelectorAll('#menu>li');
 const socialIconsInProfile = document.querySelector('.main>.profile>.profile_inner>div.social-icons');
 const socialIconsInMenu = document.querySelector('.header>.nav>div.social-icons');
 const main = document.querySelector('main.main');
+const header = document.querySelector('body.mobile>.header');
 // const menuBar = `<i class="" aria-hidden="true"></i>`
 
 //手机端简化首页动效
@@ -23,11 +23,8 @@ if (isMobile()) {
     })
     body.appendChild(showBtn)
     //Menu中追加目录隐藏按钮
-    /*< i
-    className = ""
-    aria - hidden = "true" > < /i>*/
-    let hideBtn=document.createElement('i')
-    hideBtn.className='menu-bar btn-hidden fab fa-chevron-left'
+    let hideBtn = document.createElement('i')
+    hideBtn.className = 'menu-bar btn-hidden fab fa-chevron-left'
     hideBtn.addEventListener('click', (e) => {
         hideEl(header);
         e.stopPropagation()
@@ -47,7 +44,9 @@ if (isMobile()) {
 
 
     //headerMenu控制
-    // clickToHideMenu([body, document.querySelector('h1')])
+    document.querySelector('#theme-toggle').addEventListener('click', () => {
+        hideEl(header);
+    })
 
 } else {
     //Blog在非移动端显示背景视频
@@ -78,16 +77,4 @@ function hideEl(el) {
  */
 function showEl(el) {
     el.classList.remove('hidden')
-}
-
-/**
- * 需要点击隐藏目录的元素
- * @param{Array}elList
- */
-function clickToHideMenu(elList) {
-    elList.forEach(el => {
-        el.addEventListener('click', () => {
-            hideEl(header);
-        })
-    })
 }
