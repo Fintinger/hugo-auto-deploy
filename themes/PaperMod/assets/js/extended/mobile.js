@@ -1,18 +1,21 @@
 const body = document.body;
 const menuList = document.querySelectorAll('#menu>li');
 const socialIconsInProfile = document.querySelector('.main>.profile>.profile_inner>div.social-icons');
-const socialIconsInMenu = document.querySelector('.header>.nav>div.social-icons');
+const socialIconsInMenu = document.querySelector('.header>.nav>.social-icons-container');
 const main = document.querySelector('main.main');
 const header = document.querySelector('body.mobile>.header');
 // const menuBar = `<i class="" aria-hidden="true"></i>`
 
 //手机端简化首页动效
 if (isMobile()) {
+    //移动端显示social-icons
+    console.log(socialIconsInMenu);
+    showEl('socialIconsInMenu')
     //初始化body
     body.classList.add('mobile')
     const header = document.querySelector('body.mobile>.header');
     //初始隐藏目录
-    hideEl(header);
+    hideEl('header');
     header.classList.replace('animate__slideInDown', 'animate__slideInLeft')
     //Body中追加目录显示按钮
     let showBtn = document.createElement('i')
@@ -69,12 +72,17 @@ function isMobile() {
  * 隐藏元素
  */
 function hideEl(el) {
-    el.classList.add('hidden')
+    if (el.classList && !el.classList.contains('hidden')) {
+        el.classList.add('hidden')
+    }
 }
 
 /**
  * 显示元素
  */
 function showEl(el) {
-    el.classList.remove('hidden')
+    if (el.classList && el.classList.contains('hidden')) {
+        el.classList.remove('hidden')
+    }
+
 }

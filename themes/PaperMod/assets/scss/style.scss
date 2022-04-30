@@ -1,7 +1,18 @@
 /**scss style
-* 一些样式修改
-*  @author:archai
+*
+* desc:样式引入文件
+* @author:Archai
 */
 
-@import "homepage";
+
+
+//Common
+@import "common/article";
+@import "common/articleList";
+@import "common/comment";
+@import "common/custom";
+@import "common/homepage";
+
+//other
 @import "mobile";
+@import "dark";

@@ -1,0 +1,111 @@
+body.dark{
+    background: var(--theme);
+}
+
+/*文章列表页*/
+body.dark main.main > .post-entry:hover{
+    -moz-box-shadow:0px 3px 13px #000000; -webkit-box-shadow:0px 3px 13px #000000; box-shadow:0px 3px 13px #000000;
+}
+body.dark .pagination a{
+    background: var(--tertiary);
+    color: var(--primary);
+}
+
+/*文章页*/
+body.dark .post-content,
+body.dark .post-footer .paginav,
+body.dark   article  footer  ul  li a
+{
+    background: var(--entry);
+}
+body.dark .highlight code{
+    background: var(--code-bg);
+}
+body.dark .post-content h2{
+    border-left-color: var(--h2-border);
+}
+/*评论区*/
+body.dark #veditor{
+    background: var(--entry);
+}
+body.dark #veditor .vcontent
+,body.dark #veditor > div.vpanel > div > div.vrow > div.vcol.vcol-70.text-right > button
+{
+    background: var(--code-bg)
+}
+body.dark div.vmeta span.vat{
+    color: #fff;
+}
+body.dark .v[data-class="v"] .vwrap .vpreview{
+    box-shadow: none;
+}
+
+body.dark #pinToc{
+    color: var(--primary);
+}
+body.dark .v[data-class="v"] .vcards .vcard .vh,
+body.dark .v[data-class="v"] .vcards .vcard .vquote,
+body.dark .v[data-class="v"] .vcards .vcard .vimg
+{
+    border: none;
+}
+
+/*
+This is just a placeholder blank stylesheet so as to support adding custom styles budled with theme's default styles
+
+Read https://github.com/adityatelange/hugo-PaperMod/wiki/FAQs#bundling-custom-css-with-themes-assets for more info
+*/
+pre code.hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 1em
+}
+
+code.hljs {
+    padding: 3px 5px
+}
+
+.hljs {
+    color: #aaa;
+    background: #000
+}
+
+.hljs-emphasis, .hljs-strong {
+    color: #a8a8a2
+}
+
+.hljs-bullet, .hljs-literal, .hljs-number, .hljs-quote, .hljs-regexp {
+    color: #f5f
+}
+
+.hljs-code .hljs-selector-class {
+    color: #aaf
+}
+
+.hljs-emphasis, .hljs-stronge, .hljs-type {
+    font-style: italic
+}
+
+.hljs-function, .hljs-keyword, .hljs-name, .hljs-section, .hljs-selector-tag, .hljs-symbol {
+    color: #ff5
+}
+
+.hljs-subst, .hljs-tag, .hljs-title {
+    color: #aaa
+}
+
+.hljs-attribute {
+    color: #f55
+}
+
+.hljs-class .hljs-title, .hljs-params, .hljs-title.class_, .hljs-variable {
+    color: #88f
+}
+
+.hljs-addition, .hljs-built_in, .hljs-link, .hljs-selector-attr, .hljs-selector-id, .hljs-selector-pseudo, .hljs-string, .hljs-template-tag, .hljs-template-variable, .hljs-type {
+    color: #f5f
+}
+
+.hljs-comment, .hljs-deletion, .hljs-meta {
+    color: #5ff
+}

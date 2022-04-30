@@ -139,6 +139,8 @@
             {{- end }}
         </ul>
 
-        {{- partial "social_icons.html" $.Site.Params.socialIcons -}}
+        <div class="social-icons-container hidden">
+            {{- partial "social_icons.html" $.Site.Params.socialIcons -}}
+        </div>
     </nav>
 </header>

@@ -122,31 +122,35 @@ body.mobile {
         }
       }
 
-      .social-icons {
+      .social-icons-container {
         flex: 6;
-        display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-content: center;
-        justify-content: space-between;
-        padding: 0 10px;
 
-        a {
-          color: $secCol;
-          height: 40px;
-          width: 40px;
-          text-align: center;
-          line-height: 40px;
-          background: $secBg;
-          border-radius: 10px;
-          margin-bottom: 10px;
+        .social-icons {
 
-          svg {
-            width: 20px;
-            height: inherit;
+          display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          align-content: center;
+          justify-content: space-between;
+          padding: 0 10px;
+
+          a {
+            color: $secCol;
+            height: 40px;
+            width: 40px;
+            text-align: center;
+            line-height: 40px;
+            background: $secBg;
+            border-radius: 10px;
+            margin-bottom: 10px;
+
+            svg {
+              width: 20px;
+              height: inherit;
+            }
           }
-        }
 
+        }
       }
     }
   }
