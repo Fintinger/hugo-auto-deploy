@@ -9,19 +9,17 @@ const header = document.querySelector('body.mobile>.header');
 //手机端简化首页动效
 if (isMobile()) {
     //移动端显示social-icons
-    console.log(socialIconsInMenu);
-    showEl('socialIconsInMenu')
+    showEl(socialIconsInMenu)
     //初始化body
     body.classList.add('mobile')
     const header = document.querySelector('body.mobile>.header');
     //初始隐藏目录
-    hideEl('header');
-    header.classList.replace('animate__slideInDown', 'animate__slideInLeft')
+    hideEl(header)
     //Body中追加目录显示按钮
     let showBtn = document.createElement('i')
     showBtn.className = 'menu-bar btn-show fab fa-bars'
     showBtn.addEventListener('click', (e) => {
-        showEl(header);
+        showHeader(header)
         e.stopPropagation()
     })
     body.appendChild(showBtn)
@@ -29,7 +27,7 @@ if (isMobile()) {
     let hideBtn = document.createElement('i')
     hideBtn.className = 'menu-bar btn-hidden fab fa-chevron-left'
     hideBtn.addEventListener('click', (e) => {
-        hideEl(header);
+        hideHeader(header);
         e.stopPropagation()
     })
     header.querySelector('.nav').appendChild(hideBtn)
@@ -47,9 +45,9 @@ if (isMobile()) {
 
 
     //headerMenu控制
-    document.querySelector('#theme-toggle').addEventListener('click', () => {
-        hideEl(header);
-    })
+    /*  document.querySelector('#theme-toggle').addEventListener('click', () => {
+          hideEl(header);
+      })*/
 
 } else {
     //Blog在非移动端显示背景视频
@@ -85,4 +83,22 @@ function showEl(el) {
         el.classList.remove('hidden')
     }
 
+}
+
+function showHeader(h) {
+    showEl(h);
+    if (h && h.classList.contains('animate__slideOutLeft')) {
+        h.classList.replace('animate__slideOutLeft', 'animate__slideInLeft')
+    } else if (h && h.classList.contains('animate__slideInDown')) {
+        h.classList.replace('animate__slideInDown', 'animate__slideInLeft')
+    }
+}
+
+function hideHeader(h) {
+    // hideEl(h);//animate__slideOutLeft
+    if (h && h.classList.contains('animate__slideInLeft')) {
+        h.classList.replace('animate__slideInLeft', 'animate__slideOutLeft')
+    } else if (h && h.classList.contains('animate__slideInDown')) {
+        h.classList.replace('animate__slideInDown', 'animate__slideOutLeft')
+    }
 }

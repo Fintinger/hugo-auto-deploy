@@ -66,7 +66,7 @@ params:
     # safari_pinned_tab: "<link / abs url>"
 
   label:
-    text: "🛖Home"
+    text: "Home"
     # icon: https://gitee.com/fintinger/figure-bed/raw/master//images/20210530080206.ico
     # iconHeight: 0
 
@@ -167,23 +167,23 @@ params:
 menu:
   main:
     - identifier: Posts
-      name: Posts📑
+      name: Posts
       url: /posts/
       weight: 2
     - identifier: Categories
-      name: Categories🛒
+      name: Categories
       url: /categories/
       weight: 10
     - identifier: Search
-      name: Search🔎
+      name: Search
       url: /search/
       weight: 30
     - identifier: archives
-      name: Timeline🕰️
+      name: Timeline
       url: /archives/
       weight: 40
     - identifier: About
-      name: About🥳
+      name: About
       url: /about/
       weight: 50
     

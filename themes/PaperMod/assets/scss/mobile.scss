@@ -1,6 +1,6 @@
-$background: #3f4042;
-$secCol: #b1b1b1;
-$secBg: #333;
+$background: var(--background);
+$secCol: var(--primary);
+$secBg: var(--entry);
 
 
 body.mobile {
@@ -10,7 +10,7 @@ body.mobile {
   .menu-bar {
     position: absolute;
     font-size: 1.8rem;
-    color: var(--primary);
+    color: $secCol;
   }
 
   .menu-bar.btn-show {
@@ -28,7 +28,7 @@ body.mobile {
     background: $background;
 
     a {
-      color: #fff;
+      color:$secCol;
 
       & > span {
         color: $secCol;
@@ -68,7 +68,6 @@ body.mobile {
           border-radius: 10px;
           box-sizing: content-box;
           padding: 0px 10px;
-          padding-left: 2px;
           margin-top: 6px;
         }
 
