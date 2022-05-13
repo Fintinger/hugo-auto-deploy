@@ -5,7 +5,9 @@
     <details {{if (.Param "TocOpen") }} open{{ end }}>
         <summary accesskey="c" title="(Alt + C)" style="height: 30px">
             <span class="details">{{- i18n "toc" | default "Table of Contents" }}</span>
-            <span id="pinToc" class="fab fa-thumb-tack" title="pinned/unpinned"></span>
+            <span id="pinToc"  title="pinned/unpinned">
+                <i class="fab fa-thumb-tack"></i>
+            </span>
         </summary>
 
         <div class="inner">

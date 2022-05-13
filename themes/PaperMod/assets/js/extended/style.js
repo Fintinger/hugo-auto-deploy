@@ -42,11 +42,13 @@ if (document.getElementsByClassName("post-single")[0]) {
         el.innerHTML = el.previousElementSibling.children[0].attributes.alt.value;
     })
     //toc固定按钮控制
-    const pinToc = document.querySelector("#pinToc");
+    const pinToc = document.querySelector("#pinToc>i");
+    console.log(pinToc);
     if (pinToc)
         pinToc.addEventListener("click", evt => {
-            let toc = evt.target.parentElement.parentElement.parentElement
+            let toc = evt.target.parentElement.parentElement.parentElement.parentElement
 
+            document.querySelector("details .details").classList.toggle("hidden")
             toc.classList.toggle('animate__fadeInRight')
             toc.classList.toggle('pinned')
         })
