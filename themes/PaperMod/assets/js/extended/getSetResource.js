@@ -33,7 +33,7 @@ function setBgvidCallBack(blobRes) {
     let profile = document.getElementsByClassName("profile")[0];
     if (profile && vid) {
         vid.style.display = "block";
-        window.document.body.setAttribute('style', "background:url(" + URL.createObjectURL(blobRes) + ") no-repeat  center/cover fixed")
+        // window.document.body.setAttribute('style', "background:url(" + URL.createObjectURL(blobRes) + ") no-repeat  center/cover fixed")
     }
     vid.setAttribute("src", URL.createObjectURL(blobRes));
 }

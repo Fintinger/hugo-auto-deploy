@@ -1,19 +1,16 @@
 //首页控制
 if (document.getElementsByClassName("profile")[0]) {
-    document.documentElement.style.overflowY = 'hidden'
-    // document.querySelector(".logo-switches").style.display = "none"
-    document.querySelectorAll("#menu>li>a>span").forEach(e => {
-        e.style.color = "#fff"
-    });
-    document.querySelector(".logo>a").style.color = "#fff";
 
-    let mask = document.querySelector("main > div.profile > div.profile_inner");
-    mask.addEventListener("mouseenter", e => {
-        e.target.style.opacity = '1';
-    });
-    mask.addEventListener("mouseleave", e => {
-        e.target.style.opacity = '.1';
-    })
+    window.onload = function () {
+        let profile = document.querySelector(".profile_inner")
+        profile.style.display = "block"
+        profile.style.animation = "profileOut  1s"
+    }
+    //隐藏竖向滚动条
+    document.documentElement.style.overflowY = 'hidden'
+    document.documentElement.style.overflowX = 'hidden'
+    //body添加动画类
+    document.body.classList.add('animate')
     //给header和main添加特殊class
     document.querySelector('header.header').classList.add('homepage')
     main.classList.add('homepage')
@@ -21,6 +18,9 @@ if (document.getElementsByClassName("profile")[0]) {
     if (!isMobile()) {
         document.querySelector('.logo-switches').classList.add('hidden')
     }
+} else {
+    //body移除动画类
+    document.body.classList.remove('animate')
 }
 
 //在文章列表控制
@@ -43,7 +43,6 @@ if (document.getElementsByClassName("post-single")[0]) {
     })
     //toc固定按钮控制
     const pinToc = document.querySelector("#pinToc>i");
-    console.log(pinToc);
     if (pinToc)
         pinToc.addEventListener("click", evt => {
             let toc = evt.target.parentElement.parentElement.parentElement.parentElement

@@ -1,9 +1,55 @@
 @media screen and (min-width: 750px) {
+  body.animate {
+    background: rgba(31, 56, 65, 1) !important;
+    animation: bgFadeOut 2s;
+  }
+  #liveBgBox {
+    animation: videoFadeIn, videoZoomIn 2s;
+  }
   header.header.homepage {
     nav.nav {
       .logo {
         a {
-          color: #fff;
+          color: #dedede;
+          transition: all linear .2s;
+
+          &:hover {
+            color: #FFFFFF;
+            transform: scale(1.5);
+          }
+        }
+      }
+
+      @keyframes bgFadeOut {
+        from {
+          background: rgba(31, 56, 65, 1);
+        }
+        to {
+          background: url("https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202204091914289.png");
+        }
+      }
+      @keyframes videoFadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes videoZoomIn {
+        from {
+          transform: scale(1.1);
+        }
+        to {
+          transform: scale(1);
+        }
+      }
+      @keyframes profileOut {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: .1;
         }
       }
 
@@ -11,9 +57,18 @@
         padding: 1px 2px;
 
         li {
+          margin-left: 35px;
+
           a {
             span {
-              color: #fff;
+              color: #dedede;
+              font-weight: bold;
+              font-size: 16px;
+              transition: color linear .2s;
+
+              &:hover {
+                color: #FFFFFF;
+              }
             }
           }
         }
@@ -59,6 +114,8 @@ body {
   main {
     .profile {
       .profile_inner {
+        display: none;
+        opacity: .1;
         position: relative;
         padding: 30px;
         overflow: hidden;
@@ -71,8 +128,11 @@ body {
         -webkit-box-shadow: -17px 25px 33px -15px rgba(0, 0, 0, 0.75);
         -moz-box-shadow: -17px 25px 33px -15px rgba(0, 0, 0, 0.75);
 
-        opacity: 0.1;
         transition: opacity 1s;
+
+        &:hover{
+          opacity: 1;
+        }
 
         &::before {
           content: "";
@@ -81,7 +141,7 @@ body {
           left: 0;
           right: 0;
           bottom: 0;
-          background: url("https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202204051521692.png") no-repeat center/cover fixed;
+          background: url("https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202204091914289.png") no-repeat center/cover fixed;
           filter: blur(10px);
           z-index: -1;
           margin: -20px;
