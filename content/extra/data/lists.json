@@ -1,0 +1,52 @@
+{
+  "lists":[
+    {
+      "name": "MusicPlayer",
+      "url": "./musicPlayer",
+      "des": "一个美观简洁的音乐播放器",
+      "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291836032.png",
+      "githubLink": "",
+      "downloadLink": "https://lc-gluttony.s3.amazonaws.com/jzhqULdhhNJt/e9sACicMsKHaxQOEmp8TXBoHIFoKlI5R/musicPlayer.zip"
+    },
+    {
+      "name": "JD-ShoppingCart",
+      "url": "./JDshoppingCart",
+      "des": "基于vue.js实现的仿京东购物车页面",
+      "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291837479.jpeg",
+      "githubLink": "https://github.com/Fintinger/JDshoppingcart.git",
+      "downloadLink": "https://lc-gluttony.s3.amazonaws.com/jzhqULdhhNJt/tqr67P4T8BsJnkhMib7LFnVkFBrQhkGL/JDshoppingCart.zip"
+    },
+    {
+      "name": "Smartisan.com",
+      "url": "./Smartisan",
+      "des": "仿写锤子官网",
+      "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291837154.jpeg",
+      "githubLink": "https://github.com/Fintinger/Smartisan.com.git",
+      "downloadLink": "https://lc-gluttony.s3.amazonaws.com/jzhqULdhhNJt/heuqyE2iweoXERykhqKr0kMdV9V1RYai/Smartisan.zip"
+    },
+    {
+      "name": "MyMusicPlayer",
+      "url": "./MyMusicPlayer",
+      "des": "利用大佬开发的网易云音乐API写的一款具有搜索功能的音乐播放器(无法在线体验)",
+      "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291838694.jpeg",
+      "githubLink": "https://github.com/Fintinger/MyMusicPlayer.git",
+      "downloadLink": "https://lc-gluttony.s3.amazonaws.com/jzhqULdhhNJt/ztrFqvrAtEexx9VBOz4maIzHd1pxvwAC/MyMusicPlayer.zip"
+    },
+    {
+      "name": "赛车小游戏",
+      "url": "./oneGame",
+      "des": "初学jquery时做的一个小游戏",
+      "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291838609.png",
+      "githubLink": "https://github.com/Fintinger/One-Game.git",
+      "downloadLink": "https://lc-gluttony.s3.amazonaws.com/jzhqULdhhNJt/3KdqCmUHTndVuTj0Xum4z45I2JTrCwFd/oneGame.zip"
+    },
+    {
+      "name": "TodoList",
+      "url": "./todoList",
+      "des": "Vue2.0做的一个todoList",
+      "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291853306.png",
+      "githubLink": "https://github.com/Fintinger/TodoListv1.0.git",
+      "downloadLink": "https://jqf.oss-cn-beijing.aliyuncs.com/projects/todoListv1.0.rar"
+    }
+  ]
+}
