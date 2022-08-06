@@ -37,5 +37,11 @@ weight: 1
 javascript: var t=prompt("Time(s)="); var current = location.href; if (t) {setTimeout('reload()', 1000 * t); function reload() { setTimeout('reload()', 1000 * t); var fr4me = '<frameset cols=\'*\'>\n<frame src=\'' + current + '\' />'; fr4me += '</frameset>'; with (document) { write(fr4me); void (close()); }; };}else{location.replace(current);};
 ```
 
+### 2. Video自动播放
 
+功能：点击之后输入速度t即可实现视频倍速播放，点击取消或者输入0即可恢复1倍速播放。
+
+```js
+javascript: var t=prompt("speed = "); if(t){document.getElementsByTagName("video")[0].playbackRate = t*1;}else{document.getElementsByTagName("video")[0].playbackRate = 1;};
+```
 
