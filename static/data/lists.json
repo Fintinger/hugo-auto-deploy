@@ -47,6 +47,14 @@
       "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202203291853306.png",
       "githubLink": "https://github.com/Fintinger/TodoListv1.0.git",
       "downloadLink": "https://jqf.oss-cn-beijing.aliyuncs.com/projects/todoListv1.0.rar"
+    },
+    {
+      "name": "ACMUSIC",
+      "url": "https://acmusic.vercel.app/",
+      "des": "Vue+axios相关技术做的一款PC网页端音乐播放器",
+      "img": "https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202206101302266.png",
+      "githubLink": "https://github.com/Fintinger/ACMUSIC",
+      "downloadLink": "https://github.com/Fintinger/ACMUSIC/archive/refs/heads/master.zip"
     }
   ]
 }
