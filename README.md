@@ -1,5 +1,5 @@
 <p align="center">
-<img src="https://blog.archai.site/images/favicon.ico" width="128px" height="128px" alt="blog">
+<img src="https://blog.archai233.site/images/favicon.ico" width="128px" height="128px" alt="blog">
 </p>
 
 <h1 align="center">Archai 's blog</h1>
