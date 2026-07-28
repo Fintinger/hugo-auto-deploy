@@ -9,10 +9,6 @@ showtoc: false
 
 Hello 陌生人，欢迎访问 Archai's blog
 
-(没什么可说的🤐，看看修狗👇)
-
-<img src="https://picgo-jqf.oss-cn-beijing.aliyuncs.com/img/202204031903666.png" style="zoom:33%;width:auto;" />
-
 ## 联系我
 - QQ :  <a href="https://wpa.qq.com/msgrd?v=3&uin=2592030861&site=qqq&menu=yes" target="_blank">2592030861</a>
 

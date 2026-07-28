@@ -1,6 +1,7 @@
-baseURL: "https://blog.archai233.site/"
+baseURL: "https://blog.archai.space"
 title: Archai's home
-paginate: 6
+pagination:
+  pagerSize: 6
 theme: PaperMod
 
 enableInlineShortcodes: true

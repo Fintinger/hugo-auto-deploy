@@ -31,6 +31,7 @@ if (articleFooterList[0]) {
     setLatestAndPinnedArticles("newestArticle", "fa-arrow-circle-up");
     //为文章列表添加动画延迟class
     Array.from(articleList).forEach((el, ind) => {
+        if(!el) return
         el.classList.add(`animate__delay-${ind * 2}00ms`)
     })
 }
@@ -65,6 +66,7 @@ if (document.querySelector(".terms-tags")) {
  * @param{String} className 传入包裹tag的主元素的class
  */
 function printTags(className) {
+    if (!document.getElementsByClassName(className)[0]) return;
     let postTags = document.getElementsByClassName(className)[0]
     let artBoard = ["#FC427B", "#3B3B98", "#F97F51", "#55E6C1",
         "#1dd1a1", "#00a8ff", "#fbc531", "#4cd137", "#487eb0",
@@ -80,6 +82,8 @@ function printTags(className) {
  * @param {String} pinnedClass
  */
 function setLatestAndPinnedArticles(newestClass, pinnedClass) {
+    // 新增这一行，非文章列表页直接退出，不再执行DOM操作
+    if (!document.querySelector('.entry-footer')) return;
     //文章尾注时间
     let articleFooterList = document.getElementsByClassName("entry-footer")
     //最新文章时间（初始值设置为2000.1.1，不可能比这更早）
@@ -92,17 +96,25 @@ function setLatestAndPinnedArticles(newestClass, pinnedClass) {
     let nowTime = new Date();
     //时间比较规则
     let compareTimeMethod;
-    //这个遍历做两件事情：1.直接找出并设置最新文章 2.找出获取最新发布文章的时间戳和索引为置顶文章设置做铺垫
+
+    //遍历：找出最新文章
     Array.from(articleFooterList).forEach((el, ind) => {
-        articleTime = new Date(el.children[0].getAttribute("title"));
+        if (!el) return;
+        // 关键修复：判断是否存在第一个子元素，不存在直接跳过当前项
+        const timeDom = el.children?.[0];
+        if (!timeDom) return;
+
+        articleTime = new Date(timeDom.getAttribute("title"));
         //同年同月且间隔不超过一天
         compareTimeMethod = articleTime.getFullYear() === nowTime.getFullYear() && articleTime.getMonth() === nowTime.getMonth() && nowTime.getDate() - articleTime.getDate() <= 1
         if (compareTimeMethod) {
             let tagElementI = el.parentElement.querySelector(".fab");
-            tagElementI.style.display = "inline-block";
-            tagElementI.innerText = "New"
-            tagElementI.setAttribute("title", "Newest")
-            newestClass.split(" ").forEach(e => tagElementI.classList.add(e))
+            if (tagElementI) {
+                tagElementI.style.display = "inline-block";
+                tagElementI.innerText = "New"
+                tagElementI.setAttribute("title", "Newest")
+                newestClass.split(" ").forEach(e => tagElementI.classList.add(e))
+            }
         }
         /*获取最新发布文章的时间戳和索引*/
         //getTime()越大代表越新
@@ -111,16 +123,25 @@ function setLatestAndPinnedArticles(newestClass, pinnedClass) {
             newestArticleIndex = ind;
         }
     })
-    //再遍历，找出时间早但索引在前的文章（实则为置顶文章）
+
+    //再遍历，找出置顶文章
     Array.from(articleFooterList).forEach((el, index) => {
-        articleTime = new Date(el.children[0].getAttribute("title"));
+        if (!el) return;
+        // 同样增加子元素判断
+        const timeDom = el.children?.[0];
+        if (!timeDom) return;
+
+        articleTime = new Date(timeDom.getAttribute("title"));
         if (articleTime.getTime() < newestArticleTime && index < newestArticleIndex) {
             let tagElementI = el.parentElement.querySelector(".fab");
-            tagElementI.style.display = "inline-block";
-            tagElementI.setAttribute("title", "Pinned")
-            pinnedClass.split(" ").forEach(e => tagElementI.classList.add(e))
+            if (tagElementI) {
+                tagElementI.style.display = "inline-block";
+                tagElementI.setAttribute("title", "Pinned")
+                pinnedClass.split(" ").forEach(e => tagElementI.classList.add(e))
+            }
         }
     })
 }
+
 
 
