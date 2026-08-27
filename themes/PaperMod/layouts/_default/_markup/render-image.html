@@ -1,2 +1,4 @@
 <img loading="lazy" src="{{ .Destination | safeURL }}" alt="{{ .Text }}" {{ with .Title}} title="{{ . }}" {{ end }} />
-<div class="imgAlt" style="text-align: center;color: #999;font-style: italic;margin-top: -10px"></div>
+{{- with .Text }}
+<div class="imgAlt">{{ . }}</div>
+{{- end }}

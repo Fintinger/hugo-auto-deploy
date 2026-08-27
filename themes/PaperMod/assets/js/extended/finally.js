@@ -13,4 +13,15 @@
             span.removeAttribute('style')
         }
     })
+
+//文章表格响应式：为 .post-content 下的表格包裹滚动容器
+    document.querySelectorAll('.post-content table').forEach((table) => {
+        if (table.closest('.highlight') || table.parentElement.classList.contains('article-table-wrapper')) {
+            return
+        }
+        const wrapper = document.createElement('div')
+        wrapper.className = 'article-table-wrapper'
+        table.parentNode.insertBefore(wrapper, table)
+        wrapper.appendChild(table)
+    })
 }

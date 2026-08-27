@@ -30,8 +30,19 @@
     --hljs-bg: rgb(41, 45, 62);
     --code-bg: rgb(255, 243, 240);
     --code-color: var(--theme-1);
+    --code-block-bg: rgb(246, 248, 250);
+    --code-block-border: rgb(229, 232, 238);
     --border: rgb(230, 230, 230);
     --h2-border: var(--theme-1);
+
+    --callout-info-bg: rgb(239, 246, 255);
+    --callout-info-border: rgb(59, 130, 246);
+    --callout-success-bg: rgb(240, 253, 244);
+    --callout-success-border: rgb(34, 197, 94);
+    --callout-warn-bg: rgb(255, 251, 235);
+    --callout-warn-border: rgb(245, 158, 11);
+    --callout-danger-bg: rgb(254, 242, 242);
+    --callout-danger-border: rgb(239, 68, 68);
 
 
     --mid-7: rgb(140 140 140);
@@ -48,10 +59,21 @@
     --content: rgb(196, 196, 197);
     --hljs-bg: rgb(46, 46, 51);
     --code-bg: rgb(62 62 62);
+    --code-block-bg: rgb(46, 46, 51);
+    --code-block-border: rgb(62, 64, 70);
     --border: rgb(51, 51, 51);
     --theme-1: var(--red-2);
     --code-color: var(--theme-1);
     --h2-border: var(--theme-1);
+
+    --callout-info-bg: rgb(28, 42, 58);
+    --callout-info-border: rgb(96, 165, 250);
+    --callout-success-bg: rgb(20, 44, 30);
+    --callout-success-border: rgb(74, 222, 128);
+    --callout-warn-bg: rgb(45, 40, 22);
+    --callout-warn-border: rgb(251, 191, 36);
+    --callout-danger-bg: rgb(55, 28, 28);
+    --callout-danger-border: rgb(248, 113, 113);
 }
 
 .list {

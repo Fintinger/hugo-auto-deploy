@@ -1,0 +1,309 @@
+/**
+ * chroma.scss
+ * Chroma 代码高亮配色（config.yml markup.highlight.noClasses: false，CSS 类模式）
+ * 浅色基于 github 主题，深色基于 monokai 主题，深浅两套随 body.dark 切换
+ * @author: Archai
+ */
+
+/* 代码块容器与代码背景：深浅色由 --code-block-bg 变量自动切换（覆盖 post-single.css 的深色硬编码背景） */
+.post-content .highlight:not(table) {
+  background: var(--code-block-bg) !important;
+}
+
+.post-content .highlight pre,
+.post-content pre code {
+  background: var(--code-block-bg) !important;
+}
+
+/* 代码块基色：覆盖 post-single.css 硬编码浅灰，普通文本用主题色 */
+.post-content .highlight pre code {
+  color: var(--content);
+}
+
+/* ============ 浅色模式（github） ============ */
+.post-content .chroma {
+  color: #000000;
+}
+
+.post-content .chroma .err {
+  color: #a61717;
+  background-color: #e3d2d2;
+}
+
+.post-content .chroma .lnt,
+.post-content .chroma .ln {
+  color: #7f7f7f;
+}
+
+.post-content .chroma .hl {
+  background-color: #ffffcc;
+}
+
+.post-content .chroma .k,
+.post-content .chroma .kc,
+.post-content .chroma .kd,
+.post-content .chroma .kn,
+.post-content .chroma .kp,
+.post-content .chroma .kr {
+  color: #000000;
+  font-weight: bold;
+}
+
+.post-content .chroma .kt {
+  color: #445588;
+  font-weight: bold;
+}
+
+.post-content .chroma .na {
+  color: #008080;
+}
+
+.post-content .chroma .nb {
+  color: #0086b3;
+}
+
+.post-content .chroma .bp {
+  color: #999999;
+}
+
+.post-content .chroma .nc {
+  color: #445588;
+  font-weight: bold;
+}
+
+.post-content .chroma .no {
+  color: #008080;
+}
+
+.post-content .chroma .nd {
+  color: #3c5d5d;
+  font-weight: bold;
+}
+
+.post-content .chroma .ni {
+  color: #800080;
+}
+
+.post-content .chroma .ne,
+.post-content .chroma .nf,
+.post-content .chroma .nl {
+  color: #990000;
+  font-weight: bold;
+}
+
+.post-content .chroma .nn {
+  color: #555555;
+}
+
+.post-content .chroma .nt {
+  color: #000080;
+}
+
+.post-content .chroma .nv,
+.post-content .chroma .vc,
+.post-content .chroma .vg,
+.post-content .chroma .vi {
+  color: #008080;
+}
+
+.post-content .chroma .s,
+.post-content .chroma .sa,
+.post-content .chroma .sb,
+.post-content .chroma .sc,
+.post-content .chroma .dl,
+.post-content .chroma .sd,
+.post-content .chroma .s2,
+.post-content .chroma .se,
+.post-content .chroma .sh,
+.post-content .chroma .si,
+.post-content .chroma .sx,
+.post-content .chroma .s1 {
+  color: #dd1144;
+}
+
+.post-content .chroma .sr {
+  color: #009926;
+}
+
+.post-content .chroma .ss {
+  color: #990073;
+}
+
+.post-content .chroma .m,
+.post-content .chroma .mb,
+.post-content .chroma .mf,
+.post-content .chroma .mh,
+.post-content .chroma .mi,
+.post-content .chroma .il,
+.post-content .chroma .mo {
+  color: #009999;
+}
+
+.post-content .chroma .o,
+.post-content .chroma .ow {
+  color: #000000;
+  font-weight: bold;
+}
+
+.post-content .chroma .c,
+.post-content .chroma .ch,
+.post-content .chroma .cm,
+.post-content .chroma .c1 {
+  color: #999988;
+  font-style: italic;
+}
+
+.post-content .chroma .cs,
+.post-content .chroma .cp,
+.post-content .chroma .cpf {
+  color: #999999;
+  font-weight: bold;
+  font-style: italic;
+}
+
+.post-content .chroma .gd {
+  color: #000000;
+  background-color: #ffdddd;
+}
+
+.post-content .chroma .ge {
+  color: #000000;
+  font-style: italic;
+}
+
+.post-content .chroma .gr {
+  color: #aa0000;
+}
+
+.post-content .chroma .gh {
+  color: #999999;
+}
+
+.post-content .chroma .gi {
+  color: #000000;
+  background-color: #ddffdd;
+}
+
+.post-content .chroma .go {
+  color: #888888;
+}
+
+.post-content .chroma .gp {
+  color: #555555;
+}
+
+.post-content .chroma .gs {
+  font-weight: bold;
+}
+
+.post-content .chroma .gu {
+  color: #aaaaaa;
+}
+
+.post-content .chroma .gt {
+  color: #aa0000;
+}
+
+.post-content .chroma .gl {
+  text-decoration: underline;
+}
+
+.post-content .chroma .w {
+  color: #bbbbbb;
+}
+
+/* ============ 深色模式（monokai） ============ */
+body.dark .post-content .chroma {
+  color: #f8f8f2;
+}
+
+body.dark .post-content .chroma .err {
+  color: #960050;
+  background-color: #1e0010;
+}
+
+body.dark .post-content .chroma .lnt,
+body.dark .post-content .chroma .ln {
+  color: #7f7f7f;
+}
+
+body.dark .post-content .chroma .hl {
+  background-color: #ffffcc;
+}
+
+body.dark .post-content .chroma .k,
+body.dark .post-content .chroma .kc,
+body.dark .post-content .chroma .kd,
+body.dark .post-content .chroma .kp,
+body.dark .post-content .chroma .kr,
+body.dark .post-content .chroma .kt,
+body.dark .post-content .chroma .no {
+  color: #66d9ef;
+}
+
+body.dark .post-content .chroma .kn,
+body.dark .post-content .chroma .nt,
+body.dark .post-content .chroma .o,
+body.dark .post-content .chroma .ow,
+body.dark .post-content .chroma .gd {
+  color: #f92672;
+}
+
+body.dark .post-content .chroma .na,
+body.dark .post-content .chroma .nc,
+body.dark .post-content .chroma .nd,
+body.dark .post-content .chroma .ne,
+body.dark .post-content .chroma .nf,
+body.dark .post-content .chroma .nx,
+body.dark .post-content .chroma .gi {
+  color: #a6e22e;
+}
+
+body.dark .post-content .chroma .l {
+  color: #ae81ff;
+}
+
+body.dark .post-content .chroma .s,
+body.dark .post-content .chroma .sa,
+body.dark .post-content .chroma .sb,
+body.dark .post-content .chroma .sc,
+body.dark .post-content .chroma .dl,
+body.dark .post-content .chroma .sd,
+body.dark .post-content .chroma .s2,
+body.dark .post-content .chroma .sh,
+body.dark .post-content .chroma .si,
+body.dark .post-content .chroma .sx,
+body.dark .post-content .chroma .s1,
+body.dark .post-content .chroma .ld {
+  color: #e6db74;
+}
+
+body.dark .post-content .chroma .se,
+body.dark .post-content .chroma .m,
+body.dark .post-content .chroma .mb,
+body.dark .post-content .chroma .mf,
+body.dark .post-content .chroma .mh,
+body.dark .post-content .chroma .mi,
+body.dark .post-content .chroma .il,
+body.dark .post-content .chroma .mo {
+  color: #ae81ff;
+}
+
+body.dark .post-content .chroma .c,
+body.dark .post-content .chroma .ch,
+body.dark .post-content .chroma .cm,
+body.dark .post-content .chroma .c1,
+body.dark .post-content .chroma .cs,
+body.dark .post-content .chroma .cp,
+body.dark .post-content .chroma .cpf,
+body.dark .post-content .chroma .gu {
+  color: #75715e;
+}
+
+body.dark .post-content .chroma .ge {
+  font-style: italic;
+}
+
+body.dark .post-content .chroma .gs {
+  font-weight: bold;
+}

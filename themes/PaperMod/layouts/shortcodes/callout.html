@@ -1,0 +1,9 @@
+{{- /* Callout 提示框卡片：{{< callout type="info|success|warn|danger" title="可选标题" >}}内容{{< /callout >}} */ -}}
+{{- $type := "info" -}}
+{{- if .IsNamedParams }}{{ $type = default "info" (.Get "type") }}{{ end -}}
+{{- $titles := dict "info" "提示" "success" "成功" "warn" "警告" "danger" "注意" -}}
+{{- $title := .Get "title" | default (index $titles $type | default "提示") -}}
+<div class="callout callout-{{ $type }}">
+  <div class="callout-title">{{ $title }}</div>
+  <div class="callout-body">{{ .Inner | markdownify }}</div>
+</div>
