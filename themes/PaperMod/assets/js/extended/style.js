@@ -38,18 +38,13 @@ if (articleFooterList[0]) {
 
 //只在文章详情页控制
 if (document.getElementsByClassName("post-single")[0]) {
-    //图片下面的alt添加
-    document.querySelectorAll(".imgAlt").forEach(el => {
-        el.innerHTML = el.previousElementSibling.children[0].attributes.alt.value;
-    })
     //toc固定按钮控制
     const pinToc = document.querySelector("#pinToc>i");
     if (pinToc)
         pinToc.addEventListener("click", evt => {
-            let toc = evt.target.parentElement.parentElement.parentElement.parentElement
-
+            const toc = evt.target.closest('.toc')
+            if (!toc) return
             document.querySelector("details .details").classList.toggle("hidden")
-            toc.classList.toggle('animate__fadeInRight')
             toc.classList.toggle('pinned')
         })
     //给post-tag染色
