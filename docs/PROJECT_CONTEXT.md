@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md
 
 > 本项目长期知识库。任何 AI 模型首次接手本仓库时，请先完整阅读本文件。
-> 最后更新：2026-08-27（首次接管时建立）
+> 最后更新：2026-08-27（升级 AI 协作文档体系：新增 DEVELOPMENT_WORKFLOW.md）
 
 ---
 
@@ -85,10 +85,11 @@ hugo-auto-deploy/
 ├── server.bat                # 本地开发脚本 hugo server -D（gitignored，不追踪）
 │
 ├── docs/                     # AI 协作文档（本文件所在目录）
-│   ├── PROJECT_CONTEXT.md    # 长期知识库
+│   ├── PROJECT_CONTEXT.md    # 长期知识库（本文件）
 │   ├── AI_RULES.md           # AI 修改代码的约束规范
-│   ├── ARCHITECTURE_DECISIONS.md  # 架构决策记录
-│   └── CHANGELOG_AI.md       # AI 参与开发的改动日志
+│   ├── ARCHITECTURE_DECISIONS.md  # 架构决策记录（ADR）
+│   ├── CHANGELOG_AI.md       # AI 参与开发的改动日志
+│   └── DEVELOPMENT_WORKFLOW.md   # 完整开发工作流（AI 协作/提交/测试/发布）
 │
 ├── content/                  # 全部 Markdown 内容
 │   ├── posts/                # 博客文章，按 年/月/日 目录组织
@@ -236,6 +237,24 @@ Vercel 自动部署 → https://blog.archai.space
 
 ---
 
+## 开发流程
+
+本项目采用 **AI 辅助长期维护模式**：文档驱动协作。AI 每次改动前先阅读协作文档理解上下文，改动后记录日志、输出 Git 提交建议并等待用户确认，最后由用户决定是否提交。
+
+项目重要文档统一放在 `docs/`：
+
+| 文件 | 用途 |
+|---|---|
+| `docs/PROJECT_CONTEXT.md` | 长期知识库（本文件）：项目概述、技术栈、目录结构、核心模块、数据流、已知问题、开发注意事项 |
+| `docs/AI_RULES.md` | AI 行为约束：AI 开发原则、各模块规范（Hugo/模板/SCSS/JS/内容）、修改流程、Git 提交规范、任务完成标准 |
+| `docs/ARCHITECTURE_DECISIONS.md` | 架构决策记录（ADR）：记录「为什么这样设计」，改动前先读，避免违背既有决策 |
+| `docs/CHANGELOG_AI.md` | AI 参与开发的改动日志：每次 AI 任务完成必须追加一条 |
+| `docs/DEVELOPMENT_WORKFLOW.md` | 完整开发工作流：AI 协作流程、Git 提交规范（feat/fix/refactor/docs/post/chore）、Commit 边界、提交前检查、测试要求、发布流程 |
+
+**AI 协作主流程**（详见 `DEVELOPMENT_WORKFLOW.md` §1）：阅读文档 → 理解架构 → 分析影响范围 → 提出方案 → 修改代码 → 执行测试 → 更新 `CHANGELOG_AI.md` → 输出 Git 建议等待确认。
+
+---
+
 ## 已知问题
 
 1. **Valine 密钥硬编码**：`appId/appKey/master` 明文写在公开仓库 `comments.html`，存在安全隐患。
@@ -258,5 +277,5 @@ Vercel 自动部署 → https://blog.archai.space
 5. **`resources/`、`public/` 是 gitignored**，是构建缓存/产物。
 6. 静态资源放 `static/`，served from 根路径 `/`。
 7. 发布文章只改 `content/`，文章 permalink 为 `/p/:slug/`。
-8. 提交信息 emoji 约定：📑 新文章、✨ 样式、🛠️ bugfix。
+8. 提交规范见 `DEVELOPMENT_WORKFLOW.md` §2（`feat`/`fix`/`refactor`/`docs`/`post`/`chore`），历史 emoji 约定（📑✨🛠️）可作辅助标记。
 9. 自定义 JS 统一放 `assets/js/extended/`，自定义 SCSS 统一放 `assets/scss/`，通过既有 pipeline 自动打包，勿直接在模板里写大段样式/脚本。

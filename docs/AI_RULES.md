@@ -1,6 +1,6 @@
 # AI_RULES.md
 
-> 约束 AI 在本仓库中的一切代码修改行为。修改任何文件前必须阅读本文件 + `PROJECT_CONTEXT.md` + `AGENTS.md`。
+> 约束 AI 在本仓库中的一切代码修改行为。修改任何文件前必须阅读本文件 + `DEVELOPMENT_WORKFLOW.md` + `PROJECT_CONTEXT.md` + `ARCHITECTURE_DECISIONS.md` + `CHANGELOG_AI.md` + 根目录 `AGENTS.md`。
 
 ---
 
@@ -47,7 +47,8 @@
 - 图片等资源放文章目录 `index.assets/` 或 `static/`。
 
 ### 提交规范
-- 提交信息 emoji：📑 新文章、✨ 样式改进、🛠️ bugfix。
+- 提交类型遵循 `DEVELOPMENT_WORKFLOW.md` §2（`feat`/`fix`/`refactor`/`docs`/`post`/`chore`），小粒度、类型分开提交；提交前先输出 Git 建议等待用户确认。
+- 历史 emoji 约定保留作辅助标记：📑 新文章、✨ 样式、🛠️ bugfix。
 - 不主动 commit/push，除非用户明确要求。
 
 ---
@@ -61,6 +62,42 @@
 5. **执行构建**：`.\hugo.exe`（排除 drafts）确认 BUILD_OK；如涉及草稿用 `.\hugo.exe server -D` 冒烟。
 6. **检查浏览器 Console 错误**：注意本项目 `footer.html` 里 `window.onerror` 会吞错，不能依赖"无报错"就通过，需人工核对关键交互（首页、搜索、评论、TOC、深色切换）。
 7. **更新 CHANGELOG_AI.md**：记录本次改动。
+8. **输出 Git 提交建议**：按 `DEVELOPMENT_WORKFLOW.md` §5 输出修改摘要与 Git 建议（Commit 类型 / message / 包含文件 / 不包含文件），等待用户确认后提交。
+
+---
+
+## Git 提交规范
+
+AI 参与开发时必须遵守项目 Git 管理规则（详见 `DEVELOPMENT_WORKFLOW.md` §2）：
+
+要求：
+- 修改前确认任务范围
+- 修改后检查 `git status`
+- 不自动提交包含无关文件的 commit
+
+不同类型修改必须分开提交：
+
+- 代码：`feat` / `fix` / `refactor`
+- 文档：`docs`
+- 文章：`post`
+- 配置：`chore`
+
+禁止：
+- 混合 commit（功能 + 文档 + 文章 + 配置 混在一个 commit）
+- 无意义的大 commit
+- 不检查暂存内容直接提交
+
+---
+
+## AI 任务完成标准
+
+一个任务只有满足以下条件才算完成：
+
+1. 代码修改完成
+2. 测试通过
+3. `CHANGELOG_AI.md` 已更新
+4. Git 提交范围明确（按 `DEVELOPMENT_WORKFLOW.md` §5 输出建议并获用户确认）
+5. 没有影响其他模块
 
 ---
 
