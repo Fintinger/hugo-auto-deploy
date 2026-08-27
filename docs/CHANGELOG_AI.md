@@ -289,3 +289,168 @@
 - 遗留：`article.post-single` 上的 `animate__animated animate__bounce` 入场动画仍未移除（模板属性）。
 
 ---
+
+## 2026-08-27
+
+### 修改内容
+
+修复文章 post-meta 直接显示 `:date_medium` 字面量的问题。
+
+### 修改文件
+
+- `config.yml`（`params.DateFormat` 由 `:date_medium` 改为 `2006年1月2日`）
+- `docs/CHANGELOG_AI.md`（修改，本条目）
+
+### 修改原因
+
+`post_meta.html` 通过 `time.Format .Site.Params.DateFormat` 渲染日期，而 Hugo v0.83 的 `time.Format`/`.Format` 不支持 `:date_medium` 这类冒号速记 layout（实测原样返回字面量），导致详情页 meta 直接显示 `:date_medium`。改用标准 Go layout 中文日期格式。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出
+- 渲染验证：全部文章 post-meta 显示中文日期（如 `2026年8月22日`、`2026年8月26日`），不再出现 `:date_medium`
+- 已用临时 shortcode 实测：`time.Format ":date_medium"` / `:date_short` 在 v0.83 均原样输出；标准 layout（`2006-01-02`、`2006年1月2日`）正常（测试文件已清理）
+
+### 注意事项
+
+- `DateFormat` 是全局配置，仅 `post_meta.html` 使用（已 grep 确认），改动不影响列表页/首页。
+- 若后续想换日期格式，直接在 `config.yml` 改 Go layout 字符串即可，勿再使用 `:xxx` 速记。
+
+---
+
+## 2026-08-27
+
+### 修改内容
+
+文章目录（TOC）体验优化：
+
+1. **ScrollSpy 滚动高亮**：新增 `assets/js/extended/scrollspy.js`，用 `IntersectionObserver` 跟踪文章标题，滚动时给当前章节对应 TOC 链接加 `.active` 高亮（主题色左边框 + 加粗）；TOC 可滚动时 active 项自动滚动到可见位置。注意：TOC 链接 href 被 URL 编码（中文标题 id），已用 `decodeURIComponent` 解码后再匹配。
+2. **TOC 默认展开**：`config.yml` `tocopen` 由 `false` 改为 `true`，进文章即可见目录。
+3. **图钉逻辑重构**：`style.js` 中 `#pinToc` 点击由脆弱的 `parentElement.parentElement.parentElement.parentElement` 链条改为 `evt.target.closest('.toc')`，并移除 `animate__fadeInRight` 硬切换动画。
+4. **样式**：`article-detail.scss` 新增 `.toc a.active` 当前章节高亮样式、`.toc` 内部滚动条样式。
+
+### 修改文件
+
+- `themes/PaperMod/assets/js/extended/scrollspy.js`（新增）
+- `themes/PaperMod/assets/js/extended/style.js`（pinToc 重构）
+- `themes/PaperMod/assets/scss/common/article-detail.scss`（active 高亮 + 滚动条）
+- `config.yml`（tocopen: true）
+- `docs/CHANGELOG_AI.md`（修改，本条目）
+
+### 修改原因
+
+原 TOC 无滚动高亮，长文阅读时读者无法定位当前章节；图钉逻辑依赖 DOM 层级脆弱；默认折叠需手动展开。按「现代博客」体验补齐 ScrollSpy、默认展开并加固代码。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出
+- JS 拼接顺序核对：`blobAjax < lightbox < isMobile < reading-progress < IntersectionObserver(scrollspy) < pinToc(style)`，`mobile.js` 仍在 `style.js` 前，依赖未破坏
+- TOC 链接解码匹配验证：以 FRP 长文为例，36 个 TOC 链接全部 `decodeURIComponent` 后与标题 id 匹配（36/36）
+- 产物验证：新 JS 含 `IntersectionObserver`/`decodeURIComponent`/`closest('.toc')`，`fadeInRight` 已从产物移除
+- 渲染验证：`<details open>`（默认展开生效）
+
+### 注意事项
+
+- ScrollSpy 依赖标题 id 与 TOC href 一致；中文 id 需 URL 解码（已处理，与 `footer.html` 平滑滚动逻辑一致）。
+- `IntersectionObserver` rootMargin `-80px 0px -70% 0px` 与标题 `scroll-margin-top: 76px` 配合，高亮窗口为视口顶部 80px 至底部 30% 区间。
+- 遗留：`toc.html` 的 `bareul` 嵌套逻辑复杂、无章节序号，属可选后续项。
+
+---
+
+## 2026-08-27
+
+### 修改内容
+
+修复图钉（pinToc）失效问题：
+
+1. **删除 `style.js` 中过时的 `.imgAlt` JS 填充逻辑**。该逻辑 `el.previousElementSibling.children[0].attributes.alt.value` 假设 `.imgAlt` 前一个兄弟元素的 `children[0]` 是带 `alt` 的节点，但 `.imgAlt` 前正是 `<img>`（void 元素，`children` 为空），导致 `undefined.attributes` 抛 TypeError，**中断整个 `post-single` 判断块**，使后续 `#pinToc` 点击绑定与 `printTags` 均不执行——凡带图片（有 `.imgAlt`）的文章，图钉全部失效。
+2. `render-image.html` 现在直接输出 alt 文本到 `.imgAlt`（`{{- with .Text }}<div class="imgAlt">{{ . }}</div>{{- end }}`），模板已替代该 JS 填充，故直接删除而非改写。
+
+### 修改文件
+
+- `themes/PaperMod/assets/js/extended/style.js`（删除 imgAlt 填充逻辑）
+- `docs/CHANGELOG_AI.md`（修改，本条目）
+
+### 修改原因
+
+用户反馈图钉点击后无法固定到右侧。定位到 `style.js` 中 `.imgAlt` 填充逻辑在带图文章上抛错，导致 pinToc 事件从未绑定（重构前同样存在，属既有 bug，本次排查暴露）。`closest('.toc')` 重构本身逻辑正确。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出
+- 产物验证：`extend.*.min.js` 中 `post-single` 块已无 `imgAlt` 相关代码，`#pinToc` 绑定直接在块内执行
+- `.toc.pinned{position:fixed;right:0;max-height:600px;overflow:auto;z-index:999}` 确认存在于 core.css 产物（Pipeline A），钉住样式完整
+- 待浏览器人工核对：带图文章图钉可固定、取消固定，滚动时 ScrollSpy 高亮联动
+
+### 注意事项
+
+- 教训：`style.js` 无 try-catch 且 `window.onerror` 吞错，块内任何抛错都会静默中断后续逻辑。后续往文章详情页块内加逻辑时应放在敏感操作之前或加防御。
+- `.imgAlt` 显示已完全由模板 + SCSS 负责，无需 JS。
+
+---
+
+## 2026-08-27
+
+### 修改内容
+
+紧急修复首页空白：`scrollspy.js` 在顶层块 `{ }` 内使用 `return`（`if (!tocInner || !content) return` 等），`return` 只能在函数内，导致整个拼接产物 `extend.*.min.js` 解析失败（浏览器报 `Uncaught SyntaxError: Illegal return statement`），全部脚本（含首页依赖的 `mobile.js`/`getSetResource.js`/`style.js` 首页控制）均不执行，首页渲染为空。
+
+修复：`scrollspy.js` 改为 IIFE `(function () { ... })()` 包裹，`return` 落入函数作用域，语法合法。
+
+### 修改文件
+
+- `themes/PaperMod/assets/js/extended/scrollspy.js`（顶层块改 IIFE）
+- `docs/CHANGELOG_AI.md`（修改，本条目）
+
+### 修改原因
+
+新增 `scrollspy.js` 时在顶层块内使用了 `return`（非法），未像 `progressbar.js` 那样规避（`progressbar.js` 曾遇同类问题，当时已改用 `if (article) {}` 结构，但 `scrollspy.js` 遗漏）。Hugo v0.83 的 minify 不拦截该语法错误，构建看似通过，浏览器执行时才崩溃。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages
+- `node --check` 校验产物 `extend.*.min.js`：SYNTAX OK
+- `node --check` 校验全部 `assets/js/extended/*.js` 源文件：全部 OK
+- 拼接顺序复核：`blobAjax < lightbox < isMobile < reading-progress < IntersectionObserver < pinToc`，`mobile.js` 仍在 `style.js` 前
+- 待浏览器人工核对：首页 profile 正常、图钉/ScrollSpy/灯箱/进度条均正常
+
+### 注意事项
+
+- **重要教训**：本项目 JS 经 `resources.Concat` + minify 拼成单文件，任意一个源文件的顶层语法错误会令整包失效、全站脚本停摆（首页空白）。新增 `assets/js/extended/` 文件后必须用 `node --check` 校验语法（Hugo 构建不会拦截）。
+- 顶层脚本禁止裸 `return`，统一用 IIFE 或 `if (cond) { ... }` 结构。
+
+---
+
+## 2026-08-27
+
+### 修改内容
+
+修复 TOC 固定（pinned）模式样式问题：
+
+1. **限制宽度**：`.toc.pinned` 增加 `width: 240px; max-width: 240px`。原 `.toc.pinned` 仅 `position:fixed; right:0` 无宽度约束，目录较宽时遮挡正文。
+2. **优化固定模式头部**：
+   - 隐藏 `<details>` 默认折叠三角（`summary` 的 `list-style:none` + `::-webkit-details-marker{display:none}`），改用 CSS 自定义折叠箭头（`summary::before` 用 border 画，closed 朝右 / open 朝下随 `details[open]` 旋转），保留折叠/展开功能且视觉统一。
+   - `summary` 改 flex `justify-content: space-between`，pinned 时标题（`.details`）被隐藏后，折叠箭头靠左、图钉靠右，两端分布不挤。
+   - `summary` 加 `position: sticky; top: 0`（背景 `var(--entry)`），长目录滚动时图钉按钮始终可见，可随时取消固定。
+
+### 修改文件
+
+- `themes/PaperMod/assets/scss/common/article-detail.scss`（pinned 样式）
+- `docs/CHANGELOG_AI.md`（修改，本条目）
+
+### 修改原因
+
+用户反馈 pinned 后无宽度限制遮挡正文，且折叠三角与图钉横向排列不美观。迭代修正：初次隐藏原生三角后用户反馈折叠图标消失，改为自定义 CSS 折叠箭头替代，兼顾美观与功能。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出
+- 产物验证：`article .toc.pinned{width:240px;max-width:240px}`、`summary{...justify-content:space-between...}`、`summary::before`（自定义箭头）与 `details[open] summary::before{transform:rotate(45deg)}` 已编译进 style.min.css
+- 待浏览器人工核对：pinned 后右侧 240px 目录、左侧折叠箭头（点击可折叠/展开）、右侧图钉（点击取消固定）、长目录滚动时头部保持可见
+
+### 注意事项
+
+- 移动端（≤520px）pinned 仍会占据 240px 宽度，遮挡较多，移动端建议避免使用 pinned。
+- 宽度 240px 为固定值，如需调整改 `article-detail.scss` 中 `.toc.pinned` 的 `width`。
+
+---
