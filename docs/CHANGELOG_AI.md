@@ -454,3 +454,46 @@
 - 宽度 240px 为固定值，如需调整改 `article-detail.scss` 中 `.toc.pinned` 的 `width`。
 
 ---
+
+## 2026-08-27
+
+### 修改内容
+
+代码块体验 + 全文字体优化（按用户确认的 6 项决策实施）：
+
+1. **代码块顶部信息栏**：新增 `assets/js/extended/codeblock.js`（IIFE），遍历 `.post-content .highlight`，从 `code.language-xxx` 读取语言渲染顶栏标签，并向顶栏注入「语言标签（左）+ 复制按钮（右）」；复制用 Clipboard API + `execCommand` 兜底，含「复制 / 已复制 / 复制失败」状态。同时删除 `footer.html` 内联复制 `<script>`，避免重复按钮（顶栏内常显，天然支持行号场景）。
+2. **长代码块高度限制**：`.highlight` 容器 `max-height: 480px`（移动端 `360px`）+ `overflow: auto` + 顶栏 `position: sticky; top: 0` 常驻 + 底部渐隐提示（JS 切 `.is-clipped` 时显示 `::after` 渐变）。
+3. **行号开启**：`config.yml` `markup.highlight.lineNos: true`（原 false）；新增行号列分隔样式（`td.lntd` 右边框 + 内边距）与 `.lnt/.ln` 主题次要色（替代 chroma 写死 `#7f7f7f`）。
+4. **全文字体系统栈**：`theme-vars.css` 新增 `--font-sans`（Latin + 中文系统字体：PingFang SC / Microsoft YaHei / Noto Sans CJK SC 等）、`--font-mono`（系统等宽栈），并**删除失效的 `jet-mono` webfont `@font-face`**（GitHub raw，永不引用，不引 web font）；`article-detail.scss` 全局 `body` 字体覆盖 + 代码 / kbd / 行内代码改用 `var(--font-mono)`。
+5. **行内代码底色中性化**：浅色 `--code-bg` 由粉色 `rgb(255, 243, 240)` 改为中性灰 `rgb(244, 245, 247)`（kbd / 引用块 / 表格 hover 同步中性化，保持一致）。
+
+### 修改文件
+
+- `config.yml`（lineNos: true）
+- `themes/PaperMod/assets/css/core/theme-vars.css`（新增 `--font-sans`/`--font-mono`、删除 jet-mono、中性灰 `--code-bg`）
+- `themes/PaperMod/assets/scss/common/article-detail.scss`（顶栏/行号/限高/渐隐样式 + body 字体覆盖 + 代码字体走变量）
+- `themes/PaperMod/layouts/partials/footer.html`（删除内联复制脚本）
+- `themes/PaperMod/assets/js/extended/codeblock.js`（新增）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+用户确认方向：① 代码等宽字体用系统栈（不引 web font）；② 做代码块顶部信息栏 + 优化复制按钮；③ 启用长代码块高度限制 + 渐隐；④ 开行号；⑤ 全文字体用纯系统栈；⑥ 行内代码底色改中性灰。解决此前代码块无语言标识、复制按钮仅 hover 出现、超长代码溢出、行号缺失、字体栈缺中文、失效 webfont 等体验问题。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出
+- `node --check`：`codeblock.js` 与拼接产物 `extend.*.min.js` 均 SYNTAX OK（吸取 scrollspy 顶层 return 教训，用 IIFE）
+- 产物验证：`stylesheet.min.*.css` 含 `--font-sans`/`--font-mono`/中性灰 `--code-bg`；`style.min.*.css` 含 `highlight-header`/`is-clipped`/`lntd`/`.lnt`/`body{font-family:var(--font-sans)}`；`extend.*.min.js` 含 `highlight-header`/`is-clipped`/`copy-code`
+- 渲染 DOM：52 个 HTML 含 `lntable`（行号生效）+ `language-*`（语言标签可用）；0 个 HTML 含旧内联复制脚本（已清除）
+- 未改动模板结构 / JS 拼接顺序（`codeblock.js` 字典序最前，仅碰 `.highlight` DOM，不依赖其他 extended 脚本）
+
+### 注意事项
+
+- **待浏览器人工核对**：顶栏语言标签 + 复制按钮、sticky 顶栏滚动常驻、底部渐隐、点击复制交互、行号列对齐、深浅色表现。本项目 `window.onerror` 吞错，JS 异常不会显式报错，需肉眼确认。
+- 复制按钮标签改为中文「复制 / 已复制 / 复制失败」（原 i18n 英文 copy/copied 不再使用）。
+- 底部渐隐用 `::after{position:sticky;bottom:0;margin-top:-30px}` 实现，像素与对齐可能需浏览器微调。
+- 全局 `body` 字体覆盖影响全站（列表 / 首页 / 搜索 / 评论），属预期改进；如需局部回退可改 `body` 选择器范围。
+- `footer.html` 内联复制脚本依赖 `ShowCodeCopyButtons` 参数，现由 `codeblock.js` 无条件注入顶栏，该参数对代码块复制已失效（如需恢复开关可加 data 属性判断）。
+
+---
