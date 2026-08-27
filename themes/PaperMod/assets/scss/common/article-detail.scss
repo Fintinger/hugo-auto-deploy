@@ -7,6 +7,10 @@
 /* ===== 深浅色切换过渡 ===== */
 body {
   transition: background-color 0.3s ease;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* ===== 文章内容容器 ===== */
@@ -274,7 +278,7 @@ article.post-single .post-content pre {
 article.post-single .post-content pre code {
   display: block;
   padding: 16px;
-  font-family: "JetBrains Mono", "Fira Code", Consolas, "Courier New", monospace;
+  font-family: var(--font-mono);
   font-size: 0.88em;
   line-height: 1.7;
   background: transparent;
@@ -284,7 +288,7 @@ article.post-single .post-content pre code {
 article.post-single .post-content :not(pre) > code {
   padding: 2px 6px;
   font-size: 0.85em;
-  font-family: "JetBrains Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   border-radius: 4px;
   background: var(--code-bg);
   color: var(--code-color);
@@ -295,12 +299,106 @@ article.post-single .post-content :not(pre) > code {
 article.post-single .post-content kbd {
   display: inline-block;
   padding: 2px 7px;
-  font-family: "JetBrains Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.85em;
   background: var(--code-bg);
   border: 1px solid var(--border);
   border-bottom-width: 2px;
   border-radius: 4px;
+}
+
+/* ===== 代码块顶栏 / 行号 / 高度限制 ===== */
+/* 长代码块：容器限高 + 滚动，顶栏 sticky 常驻 */
+article.post-single .post-content .highlight {
+  overflow: auto;
+  max-height: 480px;
+}
+
+/* 顶栏：语言标签（左） + 复制按钮（右） */
+article.post-single .post-content .highlight-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 14px;
+  background: var(--code-block-border);
+  border-bottom: 1px solid var(--code-block-border);
+  font-size: 0.75em;
+}
+
+article.post-single .post-content .highlight-lang {
+  color: var(--secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-family: var(--font-mono);
+}
+
+/* 复制按钮：移入顶栏、常显（覆盖 theme core 的 hover 显隐） */
+article.post-single .post-content .highlight-header .copy-code {
+  position: static;
+  display: inline-block;
+  margin: 0;
+  padding: 2px 10px;
+  font-size: 0.95em;
+  line-height: 1.4;
+  font-family: var(--font-sans);
+  color: var(--secondary);
+  background: transparent;
+  border: 1px solid var(--code-block-border);
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+article.post-single .post-content .highlight-header .copy-code:hover {
+  color: var(--primary);
+  border-color: var(--h2-border);
+}
+
+/* 强制顶栏内复制按钮常显，不被 core 的 :hover 规则重置 */
+article.post-single .post-content div.highlight:hover .copy-code,
+article.post-single .post-content pre:hover .copy-code {
+  display: inline-block;
+}
+
+/* 长代码底部渐隐提示（JS 切 .is-clipped 时显示） */
+article.post-single .post-content .highlight::after {
+  content: "";
+  position: sticky;
+  bottom: 0;
+  display: block;
+  height: 30px;
+  margin-top: -30px;
+  background: linear-gradient(to bottom, transparent, var(--code-block-bg));
+  border-radius: 0 0 var(--radius) var(--radius);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+article.post-single .post-content .highlight.is-clipped::after {
+  opacity: 1;
+}
+
+/* 行号列（lineNos 开启）：左侧行号列与代码列分隔 */
+article.post-single .post-content .highlight td.lntd:first-child {
+  border-right: 1px solid var(--code-block-border);
+  padding: 16px 12px;
+  width: 1%;
+  user-select: none;
+}
+
+article.post-single .post-content .highlight td.lntd:last-child {
+  padding: 16px;
+  width: 99%;
+}
+
+article.post-single .post-content .highlight .lnt,
+article.post-single .post-content .highlight .ln {
+  color: var(--secondary);
 }
 
 /* ===== 定义列表 ===== */
@@ -591,6 +689,10 @@ article.post-single .post-content .callout-danger .callout-title {
   article.post-single .post-content pre code {
     font-size: 0.8em;
     padding: 12px;
+  }
+
+  article.post-single .post-content .highlight {
+    max-height: 360px;
   }
 
   article.post-single .post-content img {
