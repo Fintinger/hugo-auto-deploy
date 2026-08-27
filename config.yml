@@ -11,11 +11,8 @@ buildFuture: false
 buildExpired: false
 enableEmoji: true
 
-# googleAnalytics: UA-123-45
-
 minify:
   disableXML: true
-  # minifyOutput: true
 
 outputs:
     home:
@@ -30,19 +27,14 @@ permalinks:
     page: /:slug/
 
 params:
-  # env: production # to enable google analytics, opengraph, twitter-cards and schema.
   title: "Archai's home"
   description: ""
-            
   keywords: [Blog, Portfolio, PaperMod]
   author: Archai
-  # author: ["Me", "You"] # multiple authors
   images: 
   DateFormat: ":date_medium"
-  defaultTheme: light # dark, light
+  defaultTheme: light
   disableThemeToggle: false
-
-
 
   ShowReadingTime: true
   ShowShareButtons: false
@@ -112,14 +104,6 @@ params:
     - name: vx
       url: "https://gitee.com/fintinger/figure-bed/raw/master/img/202203061823489.jpg"
 
-  # analytics:
-  #   google:
-  #     SiteVerificationTag: "XYZabc"
-  #   bing:
-  #     SiteVerificationTag: "XYZabc"
-  #   yandex:
-  #     SiteVerificationTag: "XYZabc"
-
   cover:
     hidden: true # hide everywhere but not in structured data
     hiddenInList: false # hide on list pages and home
@@ -148,12 +132,6 @@ params:
 #                admin: Admin
 #            highlight: true
   
-#-------------------------------------------------------------
-  # editPost:
-  #   URL: "https://github.com/<path_to_repo>/content"
-  #   Text: "Suggest Changes" # edit text
-  #   appendFilePath: true # to append file path to Edit link
-#-------------------------------------------------------------
   # for search
   # https://fusejs.io/api/options.html
   fuseOpts:
@@ -209,8 +187,6 @@ markup:
       noHl: false
       style: monokai
       tabWidth: 4
-      # style: monokai
-      # tabWidth: 8
     goldmark:
       extensions:
           definitionList: true
