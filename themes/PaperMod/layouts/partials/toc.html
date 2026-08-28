@@ -1,14 +1,18 @@
 {{- $headers := findRE "<h[1-6].*?>(.|\n])+?</h[1-6]>" .Content -}}
 {{- $has_headers := ge (len $headers) 1 -}}
 {{- if $has_headers -}}
-<div class="toc  animate__animated">
-    <details {{if (.Param "TocOpen") }} open{{ end }}>
-        <summary accesskey="c" title="(Alt + C)" style="height: 30px">
-            <span class="details">{{- i18n "toc" | default "Table of Contents" }}</span>
-            <span id="pinToc"  title="pinned/unpinned">
-                <i class="fab fa-thumb-tack"></i>
-            </span>
-        </summary>
+<div class="toc{{ if .Param "TocOpen" }} open{{ end }}">
+    <button class="toc-toggle" type="button" aria-expanded="{{ if .Param "TocOpen" }}true{{ else }}false{{ end }}" aria-controls="toc-panel">
+        <i class="fab fa-list-ul" aria-hidden="true"></i>
+        <span class="toc-toggle-label">{{- i18n "toc" | default "目录" }}</span>
+        <i class="toc-pin fab fa-thumb-tack" title="锁定目录" aria-label="锁定目录"></i>
+    </button>
+
+    <div class="toc-panel" id="toc-panel">
+        <div class="toc-panel-header">
+            <span class="toc-panel-title">{{- i18n "toc" | default "目录" }}</span>
+            <button class="toc-close" type="button" aria-label="关闭目录"><i class="fab fa-times" aria-hidden="true"></i></button>
+        </div>
 
         <div class="inner">
             {{- if (.Param "UseHugoToc") }}
@@ -95,6 +99,6 @@
             </ul>
             {{- end }}
         </div>
-    </details>
+    </div>
 </div>
 {{- end }}

@@ -28,9 +28,9 @@
         links.forEach(a => {
             a.classList.toggle('active', getId(a.getAttribute('href')) === id)
         })
-        const tocEl = tocInner.closest('.toc')
+        const panel = tocInner.closest('.toc-panel')
         const active = links.find(a => a.classList.contains('active'))
-        if (active && tocEl && tocEl.scrollHeight > tocEl.clientHeight) {
+        if (active && panel && panel.scrollHeight > panel.clientHeight) {
             active.scrollIntoView({ block: 'nearest' })
         }
     }

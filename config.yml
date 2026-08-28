@@ -47,7 +47,7 @@ params:
   hidemeta: false
   hideSummary: false
   showtoc: true
-  tocopen: true
+  tocopen: false
 
   assets:
     disableHLJS: true # hljs 未初始化，改用 Chroma CSS 类模式（common/chroma.scss 提供配色）
