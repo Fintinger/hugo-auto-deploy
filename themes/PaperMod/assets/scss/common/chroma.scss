@@ -15,8 +15,8 @@
   background: var(--code-block-bg) !important;
 }
 
-/* 代码块基色：覆盖 post-single.css 硬编码浅灰，普通文本用主题色 */
-.post-content .highlight pre code {
+/* 代码块基色：覆盖 post-single.css 硬编码浅灰，普通文本用主题色（含裸 <pre><code> 无高亮代码块） */
+.post-content pre code {
   color: var(--content);
 }
 
