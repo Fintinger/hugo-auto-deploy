@@ -447,10 +447,15 @@ article .toc {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
-/* 固定模式：限制宽度避免遮挡正文 */
+/* 固定模式：限制宽度避免遮挡正文；顶部贴在 header 下方，底部随视口动态限高避免出界
+   padding 归零：让 sticky summary 能覆盖到容器顶部与左右（否则 sticky 受 <details> containing block 约束，
+   无法覆盖 .toc 的 padding 区域，滚动时目录内容会从顶部/两侧漏出） */
 article .toc.pinned {
   width: 240px;
   max-width: 240px;
+  top: calc(var(--header-height) + 12px);
+  max-height: calc(100vh - var(--header-height) - 24px);
+  padding: 0;
 }
 
 /* 固定模式头部：自定义折叠箭头（左）+ 图钉（右），两端分布，滚动目录时保持可见 */
@@ -464,6 +469,7 @@ article .toc.pinned summary {
   align-items: center;
   justify-content: space-between;
   height: 30px;
+  padding: 0 1.2em;
   cursor: pointer;
 }
 
@@ -500,6 +506,11 @@ article .toc .inner {
   margin: 0.6em 0 0;
   padding: 0.6em 1em;
   border-top: 1px solid var(--border);
+}
+
+/* pinned 模式：容器 padding 归零后，目录内容左右对齐 + 底部留白补偿 */
+article .toc.pinned .inner {
+  padding: 0.6em 1.2em 1em;
 }
 
 article .toc a {
