@@ -2,12 +2,14 @@
 
 > 记录 AI 参与本项目开发/维护的每次改动。每次修改代码后按模板追加一条。
 
+> 「模型」字段填写**本会话实际使用的模型名**（以系统提示/工具信息中声明的模型标识为准），**禁止照抄历史条目中的模型名**；无法确认时填「未知」。
+
 ## 模板
 
 ```
 ## YYYY-MM-DD
 
-- 模型：（当前模型名称）
+- 模型：（本会话实际使用的模型名，见系统提示，禁止照抄历史条目）
 
 ### 修改内容
 
@@ -107,6 +109,7 @@
 优化文章详情页 markdown 文档渲染样式（方案A第一阶段）：
 
 1. **新增 `article-detail.scss`**：集中管理文章详情页样式优化
+   
    - 标题层级字号/间距优化（h2-h6）
    - 段落行高调整（line-height: 1.8）
    - 引用块美化（左边框 + 背景色）
@@ -116,10 +119,12 @@
    - 移动端适配
 
 2. **修复 `dark.scss` hljs 冲突**：
+   
    - 移除底部大段自定义 hljs 配色（与 qtcreator-dark 主题冲突）
    - 改用 head.html 引入的 qtcreator-dark.min.css 主题
 
 3. **清理 `custom.scss` 重复样式**：
+   
    - 移除 `.post-content` 的 padding/border 定义（已迁移至 article-detail.scss）
    - 保留 `.post-tags>li>a,.toc,.paginav` 背景色
 
@@ -135,6 +140,7 @@
 ### 修改原因
 
 文章详情页 markdown 渲染样式存在以下问题需要优化：
+
 1. 排版细节缺失：段落行高、标题间距、引用块样式不够美观
 2. 样式冲突：dark.scss 中的自定义 hljs 配色与 qtcreator-dark 主题冲突
 3. 样式重复：custom.scss 和 article-detail.scss 都定义了 .post-content 样式
@@ -497,5 +503,146 @@
 - 底部渐隐用 `::after{position:sticky;bottom:0;margin-top:-30px}` 实现，像素与对齐可能需浏览器微调。
 - 全局 `body` 字体覆盖影响全站（列表 / 首页 / 搜索 / 评论），属预期改进；如需局部回退可改 `body` 选择器范围。
 - `footer.html` 内联复制脚本依赖 `ShowCodeCopyButtons` 参数，现由 `codeblock.js` 无条件注入顶栏，该参数对代码块复制已失效（如需恢复开关可加 data 属性判断）。
+
+---
+
+## 2026-08-28
+
+- 模型：deepseek-v4-pro
+
+### 修改内容
+
+修复文章详情页返回顶部按钮失效 + 控制台 Valine 报错：
+
+1. **返回顶部按钮失效**：`baseof.html` 中 `<body>` 标签渲染为 `id=" top"`（id 值带前导空格），导致返回顶部按钮 `<a href="#top">` 的锚点目标 `id="top"` 不存在——footer 脚本 reduced-motion 分支 `document.querySelector('[id="top"]')` 返回 null 抛错、锚点默认跳转同样失效。改为 `id="top"`（去除空格）。
+2. **Valine 控制台报错**：Valine 默认 `recordIP: true`，初始化时会请求已失效的第三方 IP 定位接口 `https://forge.speedtest.cn/api/location/info`（404 且无 CORS 头），报 `CORS`/`404`/`Uncaught (in promise)` 红字。在 `comments.html` 的 `new Valine({...})` 中加 `recordIP: false` 禁用 IP 定位请求。
+
+### 修改文件
+
+- `themes/PaperMod/layouts/_default/baseof.html`（body id 去空格）
+- `themes/PaperMod/layouts/partials/comments.html`（recordIP: false）
+- `docs/CHANGELOG_AI.md`（修改，本条目）
+
+### 修改原因
+
+用户反馈返回顶部按钮失效且控制台报 Valine IP 定位 CORS/404 错误。前者因 body id 带空格导致锚点目标缺失；后者因 Valine 依赖的第三方 IP 定位接口已下线。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出
+- 产物验证：渲染 HTML `<body class="" id="top">`（空格已消除）；`recordIP: false` 已注入 Valine 配置
+- 待浏览器人工核对：返回顶部按钮点击滚动到顶部、滚动 800px 后按钮显示；Valine 控制台不再报 `forge.speedtest.cn` 相关错误，评论功能（发表/列表）正常
+
+### 注意事项
+
+- `recordIP: false` 仅关闭访客 IP 归属地记录，不影响评论发表、展示、阅读量统计等 Valine 核心功能。
+- 返回顶部按钮的 footer 脚本仍保留 `document.body.scrollIntoView()` 兜底（不依赖 body id），修复 id 后 reduced-motion 分支与锚点默认行为也恢复正常。
+
+---
+
+## 2026-08-28
+
+- 模型：Qwen3.5-9B
+
+### 修改内容
+
+修复文章详情页目录（TOC）钉起（pinned）后，目录过长时底部超出视口（出界）的问题。
+
+### 修改文件
+
+- `themes/PaperMod/assets/scss/common/article-detail.scss`
+
+### 修改原因
+
+`post-single.css` 核心定义 `.toc.pinned { position: fixed; max-height: 600px; }`，桌面端未设置 `top`（垂直位置取决于点击 pin 那一刻的滚动位置，不确定），且 `max-height` 为固定 600px、不考虑实际视口高度。目录较长或视口较矮时，固定目录底部会超出视口，用户看不到目录末尾条目。
+
+### 修改方案
+
+在自定义样式层 `article .toc.pinned`（特异性 (0,2,1) 高于核心 `.toc.pinned` (0,2,0)）补充两条规则：
+
+- `top: calc(var(--header-height) + 12px)`：固定目录始终贴在 header 下方。
+- `max-height: calc(100vh - var(--header-height) - 24px)`：动态限高，随视口高度变化，底部留白不超出视口。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出。
+- 产物验证：`style.min.*.css` 含 `top:calc(var(--header-height) + 12px)` 与 `max-height:calc(100vh - var(--header-height) - 24px)`。
+- 待浏览器人工核对：钉起目录后，长目录底部不超出视口、可正常滚动查看末尾条目。
+
+### 注意事项
+
+- 移动端 ≤520px 的 `top: 50px !important`（`post-single.css`）仍优先；本方案动态 `max-height` 同时生效，移动端更保守、不会出界。
+- `--header-height`（60px）为 `theme-vars.css` 已定义的 CSS 变量，未新增变量。
+
+---
+
+## 2026-08-28
+
+- 模型：Qwen3.5-9B
+
+### 修改内容
+
+修复文章详情页目录（TOC）钉起（pinned）后，滚动目录时 summary 板块（折叠图标 + 图钉）未完全覆盖目录最上方空间，导致顶部/两侧漏出目录内容的问题。
+
+### 修改文件
+
+- `themes/PaperMod/assets/scss/common/article-detail.scss`
+
+### 修改原因
+
+`article .toc` 定义了 `padding: 0.8em 1.2em`。pinned 时 `.toc.pinned` 作为滚动容器，summary 用 `position: sticky; top: 0` 固定，但 sticky 元素的移动范围受其 containing block（`<details>`）约束，而 `<details>` 位于 `.toc` 的 padding 之内——因此 summary 最多只能 sticky 到 `<details>` 顶部边界，无法覆盖 `.toc` 的 padding 区域（上方 0.8em、左右 1.2em），滚动时目录内容会从 summary 的顶部和两侧漏出。
+
+### 修改方案
+
+pinned 模式下将 `.toc.pinned` 的 `padding` 归零，让 `<details>` 的 content box 贴到容器边缘，summary 得以 sticky 到真正顶部并覆盖全宽；再用 summary / inner 各自的 padding 补偿视觉留白：
+
+- `.toc.pinned { padding: 0; }`
+- `.toc.pinned summary { padding: 0 1.2em; }`（左右留白补偿）
+- `.toc.pinned .inner { padding: 0.6em 1.2em 1em; }`（左右对齐 + 底部留白补偿）
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出。
+- 产物验证：`style.min.*.css` 含 `padding:0`（.toc.pinned）、`padding:0 1.2em`（summary）、`.toc.pinned .inner{padding:.6em 1.2em 1em}`。
+- 待浏览器人工核对：钉起并滚动目录后，summary 顶部/两侧不再漏出目录内容。
+
+### 注意事项
+
+- 仅影响 pinned 状态；非 pinned 目录仍走 `article .toc { padding: 0.8em 1.2em }` 与 `article .toc .inner`，视觉不变。
+- 左右留白从原 1.2em 改为由 summary/inner 各自 `1.2em` 补偿，视觉上与非 pinned 状态一致。
+
+---
+
+## 2026-08-28
+
+- 模型：Qwen3.5-9B
+
+### 修改内容
+
+修复日间模式下代码块中普通文本（无语法高亮的纯文本代码块，即裸 `<pre><code>`）字体颜色与背景色几乎一致、看不清文字的问题。
+
+### 修改文件
+
+- `themes/PaperMod/assets/scss/common/chroma.scss`
+
+### 修改原因
+
+chroma.scss 引入后，用 `.post-content pre code { background: var(--code-block-bg) !important; }` 把所有 `pre code` 背景强制改为浅色（日间 `rgb(246,248,250)`），但文字基色只写了 `.post-content .highlight pre code { color: var(--content); }`——只覆盖带 `.highlight` 的代码块。裸 `<pre><code>`（无语言标注的纯文本代码块）不在 `.highlight` 内，其文字色仍走 `post-single.css` 的 `.post-content pre code { color: rgb(213,213,214); }`（浅灰），于是浅灰文字 + 浅色背景 = 几乎看不清。
+
+### 修改方案
+
+将 chroma.scss 中代码块基色规则的选择器从 `.post-content .highlight pre code` 放宽为 `.post-content pre code`，使所有代码块（含裸 `<pre><code>`）的文字色统一使用主题色 `var(--content)`。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出。
+- 产物验证：`style.min.*.css` 含 `.post-content pre code{color:var(--content)}`。
+- 优先级确认：放宽后的基色 (0,1,2) 后加载、覆盖 post-single.css 同特异性浅灰；`.chroma` 具体 token 规则（如 `.post-content .chroma .nx`，特异性 (0,2,1)）仍高于基色，高亮 token 不受影响。
+- 待浏览器人工核对：日间模式裸 `<pre><code>` 代码块文字清晰可读；深色模式同样正常（`--content` 深浅两套变量自动切换）。
+
+### 注意事项
+
+- 该改动同时影响深色模式裸代码块：文字色从浅灰 `rgb(213,213,214)` 变为 `var(--content)`（深色下 `rgb(196,196,197)`），对比更合理，属预期改进。
+- 带 `.highlight` 的代码块行为不变（原本就走 `var(--content)`）。
 
 ---

@@ -61,7 +61,7 @@
 4. **修改代码**：按上述规范实施。
 5. **执行构建**：`.\hugo.exe`（排除 drafts）确认 BUILD_OK；如涉及草稿用 `.\hugo.exe server -D` 冒烟。
 6. **检查浏览器 Console 错误**：注意本项目 `footer.html` 里 `window.onerror` 会吞错，不能依赖"无报错"就通过，需人工核对关键交互（首页、搜索、评论、TOC、深色切换）。
-7. **更新 CHANGELOG_AI.md**：记录本次改动。
+7. **更新 CHANGELOG_AI.md**：记录本次改动。模板中的「模型」字段必须填写**本会话实际使用的模型名**（以系统提示/工具信息中声明的模型标识为准，例如 `deepseek-v4-pro`、`claude-xxx`、`gpt-xxx` 等），**严禁照抄历史条目中的模型名**；若无法确认自身模型名，填「未知」。
 8. **输出 Git 提交建议**：按 `DEVELOPMENT_WORKFLOW.md` §5 输出修改摘要与 Git 建议（Commit 类型 / message / 包含文件 / 不包含文件），等待用户确认后提交。
 
 ---
