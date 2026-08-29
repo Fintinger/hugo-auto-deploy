@@ -35,3 +35,76 @@ main.main > .post-entry:hover{
 .paginav {
   background: #fff;
 }
+
+/* ============================================
+   Navigation Bar Enhancements
+   ============================================ */
+
+/* 菜单项容器 - flex 居中 */
+header.header .nav #menu {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* 菜单项通用样式 - 紧凑高度 */
+header.header .nav #menu li a {
+  position: relative;
+  padding: 0.25rem 0.5rem;
+  font-weight: 500;
+  color: var(--secondary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+  line-height: 1.5;
+}
+
+/* Hover 下划线动画 - 贴近文字底部 */
+header.header .nav #menu li a::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: calc(100% - 1rem);
+  height: 3px;
+  background: var(--theme-1);
+  transform: translateX(-50%) scaleX(0);
+  transform-origin: center;
+  transition: transform 0.25s ease;
+}
+
+header.header .nav #menu li a:hover::after {
+  transform: translateX(-50%) scaleX(1);
+}
+
+header.header .nav #menu li a:hover {
+  color: var(--primary);
+}
+
+/* Active 左侧竖条指示器 */
+header.header .nav #menu li a.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: var(--primary);
+  border-radius: 2px;
+}
+
+/* Active 文字加粗 + 主题色 */
+header.header .nav #menu li a.active {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* 移除原有的 hover border-bottom（会与下划线动画冲突） */
+#menu span:hover {
+  border-bottom: none;
+}
+
+#menu span.active {
+  font-weight: 700;
+  border: none;
+}
