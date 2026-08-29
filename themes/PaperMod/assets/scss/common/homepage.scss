@@ -25,7 +25,7 @@
           background: rgba(31, 56, 65, 1);
         }
         to {
-          background: url("./images/poster1.png");
+          background: url("./images/poster1.webp");
         }
       }
       @keyframes videoFadeIn {
@@ -141,7 +141,7 @@ body {
           left: 0;
           right: 0;
           bottom: 0;
-          background: url("../images/poster1.png") no-repeat center/cover fixed;
+          background: url("../images/poster1.webp") no-repeat center/cover fixed;
           filter: blur(10px);
           z-index: -1;
           margin: -20px;

@@ -99,7 +99,7 @@
             //Blog在非移动端显示背景视频
             if (typeof window.getSetAllResource === 'function') {
                 window.getSetAllResource([
-                    { url: '/videos/bg.mp4', callBack: window.setBgvidCallBack },
+                    { url: '/videos/bg.webm', callBack: window.setBgvidCallBack },
                 ])
             }
             //social icons控制
