@@ -871,3 +871,87 @@ Valine 的 appId/appKey 公开写在 HTML 中，任何人都可用此密钥访�
 - `assets/css/hljs-blank.css` 仍被 head.html 引用（disableHLJS 时作为空 CSS），不要删除
 
 ---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+导航栏视觉效果 + 交互体验优化（高优先级）：
+
+1. **毛玻璃滚动效果**：滚动超过 50px 时，header 添加 `.scrolled` 类 + `backdrop-filter: blur(10px)` 半透明背景 + `box-shadow`；移动端不做（`prefers-reduced-motion` 检测 +移动端禁用）
+2. **Hover 下划线动画**：菜单项 hover 时主题色下划线从左到右滑入（`scaleX` + `transform-origin: center`）
+3. **Active 左侧竖条指示器**：当前页面菜单项左侧有 3px 主题色竖条，文字变主题色 + 加粗
+
+### 修改文件
+
+- `themes/PaperMod/layouts/partials/header.html`（新增 scroll 检测脚本）
+- `themes/PaperMod/assets/scss/common/custom.scss`（新增导航样式）
+
+### 修改原因
+
+提升导航栏可感知性和交互细节，与「现代博客风格 + 卡片化」方向一致。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出
+- 待浏览器人工核对：滚动 50px 后毛玻璃生效、hover 下划线动画、Active 左侧竖条
+
+### 注意事项
+
+- 毛玻璃依赖 `backdrop-filter`，低端浏览器可能不支持但会优雅降级（无毛玻璃效果）
+- 深色模式毛玻璃背景：`rgba(30, 30, 35, 0.85)`
+- 原有 `#menu span:hover { border-bottom }` 已移除，避免与下划线动画冲突
+
+---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+Extra 项目展示页 1.5 版升级（局部 UI / 交互 / 代码组织优化）：
+
+1. **CSS Grid 布局**：1/2/3/4 列响应式（<640/≥640/≥1024/≥1440），不再依赖 `lg:ml-7` 等手工 margin
+2. **图片 `<img>` 替代 background-image**：`aspect-ratio: 16/10`、`object-fit: cover`、`loading="lazy"`
+3. **卡片视觉升级**：白色背景 + 圆角 + 阴影，hover 轻微上移 + 阴影增强 + 图片 scale(1.05)
+4. **Hover Overlay 真实按钮**：GitHub / Download 按钮，无效链接不显示（downloadLink 为 `#` 或空时）
+5. **Live Demo 入口**：卡片底部独立链接，标题保持可点击
+6. **Pinned 徽章**：📌 置顶，紫色背景圆角小标签，ACMUSIC 排序第一
+7. **可选 `tags` 字段**：列表卡片可显示技术栈标签（如 `["Vue", "Axios"]`），仅 ACMUSIC 添加
+8. **Header / Hero / Footer**：精简 Header（头像 + ← Blog），Hero（标题 + 副标题 + meta），Footer（年份 + Projects · Experiments · Playground）
+9. **移除 VueResource**：改用原生 `fetch()`，含 HTTP 状态检查、JSON 解析、错误处理、loading / error 状态
+10. **路径规范化**：JSON 中图片路径从 `../images/extra/xxx.png` 改为 `/images/extra/xxx.png`
+11. **CSS 变量**：统一页面视觉变量（`--page-bg`、`--surface`、`--accent`、`--radius` 等）
+12. **HTML 语义化**：`<header>` `<main>` `<section>` `<article>` `<footer>`
+13. **可访问性**：图片 `alt`、外链 `rel="noopener noreferrer"`、移动端 `mobile-actions` 兜底（不依赖 hover）
+14. **响应式断点**：375 / 430 / 640 / 768 / 1024 / 1366 / 1440 / 1920px 全覆盖
+
+### 修改文件
+
+- `content/extra/index.html`（重写：HTML + 内联 CSS + JS）
+- `static/data/lists.json`（图片路径根路径化 + ACMUSIC 加 tags + TodoList 无效 downloadLink 置空）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+Extra 页面从「早期个人项目展示页」升级为「简洁、现代、克制的个人 Project Portfolio」。保留所有现有功能（pinned、Demo、GitHub、Download、头像返回博客），技术栈不变（Vue 2 + Tailwind CDN + 静态 JSON + fetch）。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出
+- Node 校验 `lists.json`：6 个项目，ACMUSIC pinned ✓
+- 待浏览器人工核对：CSS Grid 响应式、hover overlay、移动端 mobile-actions、ACMUSIC 排序首位、ACMUSIC 显示 `Vue` `Axios` 标签、TodoList Download 按钮不显示（downloadLink 为空）
+
+### 注意事项
+
+- 严格遵循任务约束：未引入 Vue 3 / Vite / 第三方库 / npm 依赖，技术栈保持 Vue 2 + Tailwind CDN
+- `lists.json` 外层结构 `{"lists":[...]}` 不变，向后兼容
+- 旧 `../images/extra/*.png` 路径已全部改为 `/images/extra/*.png`
+- 移动端通过 `@media (hover: none)` 检测无 hover 设备，关闭 overlay 显示 mobile-actions 图标链接
+- Hero / Footer 仅轻量补充，未做大改动
+- 浏览器测试：当前 OpenCode 环境未验证（无 Browser/Playwright 能力），需用户手动确认
+
+---
