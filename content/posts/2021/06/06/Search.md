@@ -10,6 +10,7 @@ tags:
  - B树
  - 散列查找
 image: https://picsum.photos/seed/Serach/640/360
+math: true
 ---
 
 ## 顺序查找

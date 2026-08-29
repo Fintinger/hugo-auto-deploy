@@ -14,6 +14,7 @@ tags:
  - 拓扑排序
  - 关键路径
 image: https://picsum.photos/seed/graphapply/640/360
+math: true
 ---
 
 ## 一、最小生成树

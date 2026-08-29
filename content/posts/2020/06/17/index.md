@@ -7,6 +7,7 @@ tags:
   - 统计学
 categories:
   - 学习总结
+math: true
 ---
 ## 第一章   导 论
 

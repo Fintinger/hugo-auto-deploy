@@ -6,7 +6,7 @@ categories:
 tags:
  - 线性代数
 image: https://picsum.photos/seed/det/640/360
-math: false
+math: true
 ---
 
 

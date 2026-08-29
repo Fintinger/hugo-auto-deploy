@@ -6,6 +6,7 @@ categories:
 tags:
  - 线性代数
 image: https://picsum.photos/seed/eigenvalue/640/360
+math: true
 ---
 
 ## 特征值与特征向量

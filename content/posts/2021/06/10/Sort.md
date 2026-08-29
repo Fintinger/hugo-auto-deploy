@@ -14,6 +14,7 @@ tags:
  - 希尔排序
  - 堆排序
 image: https://picsum.photos/seed/paixu/640/360
+math: true
 ---
 
 

@@ -6,6 +6,7 @@ categories:
 tags:
  - 数据结构 
  - Huffman
+math: true
 ---
 
 ## 基本概念

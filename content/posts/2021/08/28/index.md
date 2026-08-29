@@ -6,6 +6,7 @@ categories:
 tags:
  - 线性代数
 image: https://picsum.photos/seed/ercixing/640/360
+math: true
 ---
 
 ## 性质定理

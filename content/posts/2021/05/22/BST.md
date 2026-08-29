@@ -5,6 +5,7 @@ categories:
  - 后端
 tags:
  - 数据结构
+math: true
 ---
 
 > BST(Binary Search Tree)，即二叉排序树或二叉查找树。

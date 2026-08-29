@@ -8,6 +8,7 @@ tags:
  - BFS
  - DFS
 image: https://picsum.photos/seed/graphtraverse/640/360
+math: true
 ---
 
 ## 广度优先遍历（BFS）

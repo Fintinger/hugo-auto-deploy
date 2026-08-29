@@ -11,6 +11,7 @@ tags:
  - 最佳归并树
 image: https://picsum.photos/seed/waibupaixu/640/360
 description: 由于数据元素太多，无法一次全部读入内存进行内部排序，这是就要通过外部排序来解决...
+math: true
 ---
 
  ## 外部排序

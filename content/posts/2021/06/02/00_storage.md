@@ -10,6 +10,7 @@ tags:
  - 十字链表
  - 邻接多重表
 image: https://picsum.photos/seed/graphstroage/640/360
+math: true
 ---
 
 ## 邻接矩阵

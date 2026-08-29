@@ -6,6 +6,7 @@ categories:
 tags:
  - 线性代数
 image: https://picsum.photos/seed/equationset/640/360
+math: true
 ---
 
 ## Ax=0

@@ -6,6 +6,7 @@ categories:
 tags:
  - 线性代数
 image:  https://picsum.photos/seed/matrix/640/
+math: true
 ---
 
 ## 基本计算

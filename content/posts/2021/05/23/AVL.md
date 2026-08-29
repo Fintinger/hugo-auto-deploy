@@ -7,6 +7,7 @@ tags:
  - 数据结构 
  - AVL
 image: https://picsum.photos/seed/AVLTREE/640/360
+math: true
 ---
 
 > 平衡二叉树是Adelson-Velsky和 Landis发明，故命名为AVL树。也称平衡二叉查找树。
