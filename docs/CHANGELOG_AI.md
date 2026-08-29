@@ -733,3 +733,141 @@ Review 严重问题 1（JS 零容错单点故障连坐全站）+ 严重问题 3�
 - public/ 目录残留多个旧版 extend.min.js / stylesheet css（Hugo 不清理 destination），浏览器命中与否取决于 HTML 引用的 fingerprint 文件名，属正常；后续可用 `--cleanDestinationDir` 清理。
 
 ---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+迁移评论系统从 Valine（密钥硬编码）到 Waline（密钥分离）：
+
+1. **替换 `comments.html`**：移除 Valine 硬编码 appId/appKey/master，改为 Waline CDN 引入（`@waline/client@v3`），只需 `serverURL`。
+2. **保留 `comment.scss`**：Waline 样式类名与 Valine 不同，需后续调整，当前评论区域样式可能略有出入。
+3. **config.yml 保留 Valine 配置**：暂不删除，备选。
+
+### 修改文件
+
+- `themes/PaperMod/layouts/partials/comments.html`（替换）
+
+### 修改原因
+
+Valine 的 appId/appKey 公开写在 HTML 中，任何人都可用此密钥访问 LeanCloud 后端，存在安全隐患。Waline 将密钥分离到服务端（Vercel），前端只暴露 serverURL，安全性更高。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出
+- 渲染产物：`<link rel="stylesheet" href="https://unpkg.com/@waline/client@v3/dist/waline.css">` + `<div id="waline"></div>` + init script
+- 待浏览器人工核对：评论发表/展示正常、样式完整、/ui 管理端可访问
+
+### 注意事项
+
+- Waline serverURL：`https://waline-comments-liart.vercel.app/`
+- 评论数据不迁移（新 Waline 从零开始）
+- 评论管理：访问 `<serverURL>/ui/register` 注册管理员
+- `comment.scss` 样式可能需针对 Waline 类名调整（当前 Valine 样式如 `.vcomments`/`.vcard` 等不匹配）
+- 旧 Valine 密钥（6lUYMvIcPEdh8TJIHPL1V8sd-gzGzoHsz/eQh9fRmGTn757NYWg7NfDETV）已从前端移除，但 LeanCloud 应用本身未删除，如需彻底作废需在 LeanCloud 控制台处理
+
+---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+移除 `footer.html` 末尾的 `window.onerror=function(){return true;}` 吞错逻辑。
+
+### 修改文件
+
+- `themes/PaperMod/layouts/partials/footer.html`
+
+### 修改原因
+
+该语句屏蔽所有 JS 报错，导致开发时无法通过控制台发现 JS 错误。经过多轮 JS 容错加固（IIFE + try-catch），风险已大幅降低，移除此语句有利于调试。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出
+- 待浏览器人工核对：控制台能正常显示 JS 错误（如果有）
+
+### 注意事项
+
+- 移除后 JS 错误会在控制台显示，如之前有隐藏的错误会暴露，属预期行为
+- 如后续发现外部 CDN 资源报错（跨域/CORS），需单独处理，不应全局吞错
+
+---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+图片/视频体积优化（静态资源替换，不改代码架构）：
+
+1. **poster1.png → poster1.webp**：3.68MB → 0.23MB（压缩率 94%）
+2. **bg.mp4 → bg.webm**：2.53MB → 1.08MB（压缩率 57%）
+3. **更新 SCSS 引用**：`homepage.scss` 两处 poster1.png → poster1.webp
+4. **更新 JS 引用**：`mobile.js` bg.mp4 → bg.webm
+
+### 修改文件
+
+- `themes/PaperMod/assets/scss/common/homepage.scss`
+- `themes/PaperMod/assets/js/extended/mobile.js`
+
+### 修改原因
+
+原静态资源体积过大影响首屏加载速度：
+- poster1.png（3.68MB）用于首页背景渐变和模糊层
+- bg.mp4（2.53MB）用于首页背景视频
+- 压缩后体积大幅减小，用户体验提升
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出
+- `grep` 确认无残留 `bg.mp4` / `poster1.png` 引用
+- Static files: 18 → 19（新增 webp/webm，旧的 mp4/png 待手动删除）
+
+### 注意事项
+
+- head.gif 保持不变（动图转静态会失去动画）
+- 旧的 `static/videos/bg.mp4` 和 `static/images/poster1.png` 建议手动删除
+- WebP/WebM 浏览器兼容性：IE 不支持（但博客用户几乎不用 IE，可忽略）
+
+---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+清理死代码与死资源：
+
+1. **删除 `randomLine.js`**：整体被 `/*...*/` 注释，从未执行
+2. **删除 `highlight.min.js`**：无引用（已切换到 Chroma）
+3. **删除 `hljs/an-old-hope.min.css`**：无引用
+4. **删除 `hljs/qtcreator-dark.min.css`**：`config.yml disableHLJS: true` 实际不加载
+
+### 修改文件
+
+- `themes/PaperMod/assets/js/extended/randomLine.js`（删除）
+- `themes/PaperMod/assets/js/highlight.min.js`（删除）
+- `themes/PaperMod/assets/css/hljs/an-old-hope.min.css`（删除）
+- `themes/PaperMod/assets/css/hljs/qtcreator-dark.min.css`（删除）
+
+### 修改原因
+
+代码高亮已迁移到 Chroma CSS 类模式，HLJS 相关资源已失效；`randomLine.js` 是历史遗留死代码。删除可减少构建产物大小和代码复杂度。
+
+### 测试结果
+
+- `.\hugo.exe`（生产构建）：BUILD_OK，257 pages，无错误输出
+
+### 注意事项
+
+- `hljs/` 目录保留（空目录无影响）
+- `assets/css/hljs-blank.css` 仍被 head.html 引用（disableHLJS 时作为空 CSS），不要删除
+
+---
