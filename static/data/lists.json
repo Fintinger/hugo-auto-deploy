@@ -4,49 +4,56 @@
       "name": "MusicPlayer",
       "url": "https://music-player-concise.vercel.app/",
       "des": "一个美观简洁的音乐播放器",
-      "img": "../images/extra/musicPlayer.png",
+      "img": "/images/extra/musicPlayer.png",
       "githubLink": "https://github.com/Fintinger/music-player-concise",
-      "downloadLink": "https://lc-gluttony.s3.amazonaws.com/jzhqULdhhNJt/e9sACicMsKHaxQOEmp8TXBoHIFoKlI5R/musicPlayer.zip"
+      "downloadLink": "https://lc-gluttony.s3.amazonaws.com/jzhqULdhhNJt/e9sACicMsKHaxQOEmp8TXBoHIFoKlI5R/musicPlayer.zip",
+      "tags": ["Vue", "Axios"]
     },
     {
       "name": "JD-ShoppingCart",
       "url": "https://jd-shoppingcart.vercel.app/",
       "des": "基于vue.js实现的仿京东购物车页面",
-      "img": "../images/extra/jdShoppingCart.png",
+      "img": "/images/extra/jdShoppingCart.png",
       "githubLink": "https://github.com/Fintinger/JDshoppingcart.git",
-      "downloadLink": "https://lc-gluttony.s3.amazonaws.com/jzhqULdhhNJt/tqr67P4T8BsJnkhMib7LFnVkFBrQhkGL/JDshoppingCart.zip"
+      "downloadLink": "https://lc-gluttony.s3.amazonaws.com/jzhqULdhhNJt/tqr67P4T8BsJnkhMib7LFnVkFBrQhkGL/JDshoppingCart.zip",
+      "tags": ["Vue"]
     },
     {
       "name": "Smartisan.com",
       "url": "https://smartisan-7gcotwy10-fintinger.vercel.app/",
       "des": "仿写锤子官网",
-      "img": "../images/extra/smartisan.png",
+      "img": "/images/extra/smartisan.png",
       "githubLink": "https://github.com/Fintinger/Smartisan.com.git",
-      "downloadLink": "https://lc-gluttony.s3.amazonaws.com/jzhqULdhhNJt/heuqyE2iweoXERykhqKr0kMdV9V1RYai/Smartisan.zip"
+      "downloadLink": "https://lc-gluttony.s3.amazonaws.com/jzhqULdhhNJt/heuqyE2iweoXERykhqKr0kMdV9V1RYai/Smartisan.zip",
+      "tags": ["古人的设计"]
     },
     {
       "name": "赛车小游戏",
       "url": "https://one-game.vercel.app/",
       "des": "初学jquery时做的一个小游戏",
-      "img": "../images/extra/oneGame.png",
+      "img": "/images/extra/oneGame.png",
       "githubLink": "https://github.com/Fintinger/One-Game.git",
-      "downloadLink": "https://lc-gluttony.s3.amazonaws.com/jzhqULdhhNJt/3KdqCmUHTndVuTj0Xum4z45I2JTrCwFd/oneGame.zip"
+      "downloadLink": "https://lc-gluttony.s3.amazonaws.com/jzhqULdhhNJt/3KdqCmUHTndVuTj0Xum4z45I2JTrCwFd/oneGame.zip",
+      "tags": ["JavaScript","jQuery"]
     },
     {
       "name": "TodoList",
       "url": "https://todo-listv1-0.vercel.app/",
       "des": "Vue2.0做的一个todoList",
-      "img": "../images/extra/todoList.png",
+      "img": "/images/extra/todoList.png",
       "githubLink": "https://github.com/Fintinger/TodoListv1.0.git",
-      "downloadLink": "#"
+      "downloadLink": "",
+      "tags": ["Vue"]
     },
     {
       "name": "ACMUSIC",
       "url": "https://acmusic.vercel.app/",
       "des": "Vue+axios相关技术做的一款PC网页端音乐播放器",
-      "img": "../images/extra/acmusic.png",
+      "img": "/images/extra/acmusic.png",
       "githubLink": "https://github.com/Fintinger/ACMUSIC",
-      "downloadLink": "https://github.com/Fintinger/ACMUSIC/archive/refs/heads/master.zip"
+      "downloadLink": "https://github.com/Fintinger/ACMUSIC/archive/refs/heads/master.zip",
+      "pinned": true,
+      "tags": ["Vue", "Axios"]
     }
   ]
 }

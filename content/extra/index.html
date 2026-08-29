@@ -2,120 +2,484 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Blog|Extra</title>
-    <link rel="shortcut icon" href="/images/favicon.ico"
-          type="image/x-icon">
-    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-    <link href="https://cdn.bootcdn.net/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog | Extra</title>
+    <link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.min.js"></script>
     <style>
+        :root {
+            --page-bg: #f5f5f7;
+            --surface: #ffffff;
+            --text: #1f1f23;
+            --muted: #6b6b73;
+            --border: #e5e5ea;
+            --accent: rgb(124, 58, 237);
+            --accent-hover: rgb(109, 50, 209);
+            --radius: 12px;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.06);
+            --transition: 0.25s ease;
+        }
+
+        * { box-sizing: border-box; }
+
+        html { font-size: 16px; }
+
+        body {
+            margin: 0;
+            background: var(--page-bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        [v-cloak] { display: none; }
+
+        /* ============================================
+           Header
+           ============================================ */
+        .site-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.85);
+        }
+
+        .site-header .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: url('/images/avatar.jpeg') center/cover;
+            display: inline-block;
+            border: 2px solid var(--border);
+            transition: transform var(--transition);
+        }
+
+        .site-header .avatar:hover { transform: rotate(180deg); }
+
+        .site-header .nav-link {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            transition: color var(--transition), background var(--transition);
+        }
+
+        .site-header .nav-link:hover {
+            color: var(--accent);
+            background: rgba(124, 58, 237, 0.08);
+        }
+
+        /* ============================================
+           Hero
+           ============================================ */
+        .hero {
+            text-align: center;
+            padding: 4rem 1.5rem 3rem;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin: 0 0 0.75rem;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        }
+
+        .hero h1 .accent { color: var(--accent); }
+
+        .hero .subtitle {
+            color: var(--muted);
+            font-size: 1rem;
+            margin: 0 0 0.5rem;
+        }
+
+        .hero .meta {
+            color: var(--muted);
+            font-size: 0.85rem;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            letter-spacing: 0.05em;
+        }
+
+        /* ============================================
+           Project Grid
+           ============================================ */
+        .projects {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.5rem 4rem;
+        }
+
+        .projects .grid {
+            display: grid;
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+            gap: 1.5rem;
+        }
+
         @media (min-width: 640px) {
-            html {
-                font-size: 32px;
-            }
+            .projects .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
 
-        @media (min-width: 1025px) {
-            html {
-                font-size: 16px;
-            }
+        @media (min-width: 1024px) {
+            .projects .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
 
-        .mask p {
-            display: none;
+        @media (min-width: 1440px) {
+            .projects .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
         }
 
-        .mask:hover p {
+        /* ============================================
+           Project Card
+           ============================================ */
+        .project-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: transform var(--transition), box-shadow var(--transition);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .project-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .project-image {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            overflow: hidden;
+            background: #f0f0f3;
+        }
+
+        .project-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
             display: block;
+            transition: transform 0.4s ease;
         }
 
-        #app {
-            min-height: 80vh;
+        .project-card:hover .project-image img { transform: scale(1.05); }
+
+        .project-image .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(31, 31, 35, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            opacity: 0;
+            transition: opacity var(--transition);
+            padding: 1rem;
         }
 
-        [v-clock] {
-            display: none;
+        .project-card:hover .project-image .overlay,
+        .project-card:focus-within .project-image .overlay { opacity: 1; }
+
+        .overlay-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.55rem 0.9rem;
+            background: var(--surface);
+            color: var(--text);
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: background var(--transition), color var(--transition);
         }
 
+        .overlay-btn:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .overlay-btn svg { width: 16px; height: 16px; }
+
+        .project-badge {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background: var(--accent);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+            letter-spacing: 0.02em;
+            z-index: 2;
+            box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);
+        }
+
+        .project-body {
+            padding: 1rem 1.1rem 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .project-title {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .project-title a {
+            color: inherit;
+            text-decoration: none;
+            transition: color var(--transition);
+        }
+
+        .project-title a:hover { color: var(--accent); }
+
+        .project-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .project-tags li {
+            font-size: 0.72rem;
+            color: var(--accent);
+            background: rgba(124, 58, 237, 0.1);
+            padding: 0.15rem 0.55rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .project-desc {
+            color: var(--muted);
+            font-size: 0.85rem;
+            margin: 0;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .project-actions {
+            margin-top: auto;
+            padding-top: 0.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .demo-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            color: var(--accent);
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color var(--transition);
+        }
+
+        .demo-link:hover { color: var(--accent-hover); }
+
+        .mobile-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .mobile-actions a {
+            color: var(--muted);
+            display: inline-flex;
+            align-items: center;
+            transition: color var(--transition);
+        }
+
+        .mobile-actions a:hover { color: var(--accent); }
+
+        .mobile-actions svg { width: 18px; height: 18px; }
+
+        /* ============================================
+           States
+           ============================================ */
+        .state {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--muted);
+        }
+
+        .state.error { color: #c53030; }
+
+        /* ============================================
+           Footer
+           ============================================ */
+        .site-footer {
+            border-top: 1px solid var(--border);
+            background: var(--surface);
+            padding: 1.5rem;
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .site-footer .meta {
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            letter-spacing: 0.05em;
+            margin-top: 0.25rem;
+        }
+
+        /* ============================================
+           Mobile (overlay fallback)
+           ============================================ */
+        @media (hover: none) {
+            .project-image .overlay { display: none; }
+            .mobile-actions { display: flex; }
+        }
+
+        @media (hover: hover) {
+            .mobile-actions { display: none; }
+        }
     </style>
-    <style>
-        @tailwind base;
-        @tailwind components;
-        @tailwind utilities;
-    </style>
-
 </head>
-<body class="bg-gray-200 ">
-<header class="w-full h-24 bg-gray-800 shadow-xl flex flex-row overflow-hidden">
-    <div class="logo h-full w-1/5"><a href="../"
-                                      style="display:inline-block;background:url('/images/avatar.jpeg') center/cover;"
-                                      class="h-20 w-20 rounded-full ring-4 ring-inset ring-gray-200 ml-5 mt-2 transform transition duration-300 md:hover:rotate-180 cursor-pointer"></a>
-    </div>
-    <div class="h_right h-full w-4/5"></div>
+<body>
+
+<header class="site-header">
+    <a href="../" class="avatar" aria-label="Back to blog"></a>
+    <nav>
+        <a href="../" class="nav-link" rel="noopener">← Blog</a>
+    </nav>
 </header>
-<div class="w-full h-36 flex-col overflow-hidden border-solid border-gray-300 border-b">
-    <div class="content my-0 mx-auto md:w-max font-mono h-20 text-center">
-        <h1 class="mt-8 text-6xl   font-mono tracking-widest"><i class="text-purple-700 not-italic font-semibold">E</i>xtra
-        </h1>
-        <h2 class="text-gray-400 mt-5">分享有趣的Github开源小项目</h2>
-    </div>
-</div>
-<div v-cloak id="app"
-     class="flex flex-wrap sm:w-full xl:w-3/5  mx-auto px-5 pt-20 bg-gray-100 shadow-xl overflow-hidden">
-    <div v-for="ls in lists.lists"
-         class="card rounded-md overflow-hidden lg:ml-7 mb-8  h-80 w-full xl:w-60 shadow-xl hover:shadow-2xl font-sans  transition duration-300 ease-in-out transform hover:translate-y-2">
-        <div :style="{backgroundImage: 'url(' + ls.img + ')', backgroundSize:'cover',backgroundPosition:'center', backgroundRepeat: 'no-repeat'}"
-             class="h-4/6 overflow-hidden">
-            <div class="mask bg-gray-700 bg-opacity-0 hover:bg-opacity-90 w-full h-full transition duration-300 ease-in-out overflow-hidden">
-                <p class="mx-auto mt-24 w-28 align-baseline text-gray-50 font-mono text-base hover:underline cursor-pointer">
-                    <svg style="display:inline" class="mb-1 mr-1" t="1629346450065" class="icon" viewBox="0 0 1024 1024"
-                         version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="3065" width="22" height="22">
-                        <path d="M512 42.666667A464.64 464.64 0 0 0 42.666667 502.186667 460.373333 460.373333 0 0 0 363.52 938.666667c23.466667 4.266667 32-9.813333 32-22.186667v-78.08c-130.56 27.733333-158.293333-61.44-158.293333-61.44a122.026667 122.026667 0 0 0-52.053334-67.413333c-42.666667-28.16 3.413333-27.733333 3.413334-27.733334a98.56 98.56 0 0 1 71.68 47.36 101.12 101.12 0 0 0 136.533333 37.973334 99.413333 99.413333 0 0 1 29.866667-61.44c-104.106667-11.52-213.333333-50.773333-213.333334-226.986667a177.066667 177.066667 0 0 1 47.36-124.16 161.28 161.28 0 0 1 4.693334-121.173333s39.68-12.373333 128 46.933333a455.68 455.68 0 0 1 234.666666 0c89.6-59.306667 128-46.933333 128-46.933333a161.28 161.28 0 0 1 4.693334 121.173333A177.066667 177.066667 0 0 1 810.666667 477.866667c0 176.64-110.08 215.466667-213.333334 226.986666a106.666667 106.666667 0 0 1 32 85.333334v125.866666c0 14.933333 8.533333 26.88 32 22.186667A460.8 460.8 0 0 0 981.333333 502.186667 464.64 464.64 0 0 0 512 42.666667"
-                              p-id="3066" fill="#e6e6e6"></path>
-                    </svg>
-                    <a target="_blank" :href=ls.githubLink||'javascript:;'>Github</a>
-                </p>
-                <p class="mx-auto mt-2 w-28 text-gray-50 font-mono text-base hover:underline cursor-pointer">
-                    <svg style="display:inline" class="mb-1 mr-1" t="1629347036092" class="icon" viewBox="0 0 1265 1024"
-                         version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4022" width="20" height="20">
-                        <path d="M1025.724758 311.892298A401.369796 401.369796 0 0 0 298.08016 182.41817a310.737906 310.737906 0 0 0 25.894826 621.475813 51.789651 51.789651 0 0 0 0-103.579302 207.158604 207.158604 0 0 1 0-414.317209h16.31374l5.178965-1.553689 4.40212-1.812638 4.661069-2.589483 3.884224-2.330534a27.707463 27.707463 0 0 0 4.143172-3.625276l3.366327-3.107379a20.456912 20.456912 0 0 0 3.107379-3.884223 22.787446 22.787446 0 0 0 3.107379-4.402121l1.294742-1.812638a298.049442 298.049442 0 0 1 557.515593 110.570905v1.55369a6.214758 6.214758 0 0 0 0 2.071586c0 2.589483 0 5.178965 1.812638 7.768448v1.553689a51.789651 51.789651 0 0 0 3.625276 7.768448 51.789651 51.789651 0 0 0 44.021203 25.894825h8.027396a133.876248 133.876248 0 0 1 21.751654-2.589482 142.42154 142.42154 0 0 1 0 284.843081H971.345624a51.789651 51.789651 0 0 0 0 103.579302h38.842239a245.741894 245.741894 0 0 0 15.536895-492.001685z"
-                              fill="#ededed" p-id="4023"></path>
-                        <path d="M781.795501 803.893983l-87.783458 87.783459V519.050902a38.842238 38.842238 0 0 0-77.684477 0v372.367591L528.803056 803.893983a38.842238 38.842238 0 0 0-54.89703 55.155978l153.815263 153.815264a35.734859 35.734859 0 0 0 12.170568 8.027396 41.949617 41.949617 0 0 0 13.983206 2.589482 38.065394 38.065394 0 0 0 14.501103-2.84843 38.842238 38.842238 0 0 0 13.206361-9.063189l153.556315-153.556316A38.842238 38.842238 0 1 0 781.795501 803.893983z"
-                              fill="#ededed" p-id="4024"></path>
-                    </svg>
-                    <a :href=ls.downloadLink||'javascript:;'>Download</a>
-                </p>
+
+<main>
+
+    <section class="hero">
+        <h1><span class="accent">E</span>xtra</h1>
+        <p class="subtitle">一些写过、玩过、折腾过的小项目</p>
+        <p class="meta">Projects · Experiments · Playground</p>
+    </section>
+
+    <section id="app" class="projects">
+        <div v-cloak>
+            <div v-if="loading" class="state">Loading…</div>
+            <div v-else-if="error" class="state error">{{ error }}</div>
+            <div v-else class="grid">
+                <article v-for="ls in sortedLists" :key="ls.name" class="project-card">
+                    <span v-if="ls.pinned" class="project-badge">📌 置顶</span>
+                    <div class="project-image">
+                        <img :src="ls.img" :alt="ls.name" loading="lazy">
+                        <div v-if="ls.githubLink || ls.downloadLink" class="overlay">
+                            <a v-if="ls.githubLink" :href="ls.githubLink" target="_blank" rel="noopener noreferrer" class="overlay-btn">
+                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.27-.01-1-.01-1.96-3.2.7-3.88-1.54-3.88-1.54-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.34.95.1-.74.4-1.24.73-1.53-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.07.78 2.16 0 1.56-.01 2.82-.01 3.2 0 .31.21.68.8.56C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+                                GitHub
+                            </a>
+                            <a v-if="hasDownload(ls)" :href="ls.downloadLink" target="_blank" rel="noopener noreferrer" class="overlay-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Download
+                            </a>
+                        </div>
+                    </div>
+                    <div class="project-body">
+                        <h3 class="project-title">
+                            <a :href="ls.url || '#'" target="_blank" rel="noopener noreferrer">{{ ls.name }}</a>
+                        </h3>
+                        <ul v-if="ls.tags && ls.tags.length" class="project-tags">
+                            <li v-for="t in ls.tags" :key="t">{{ t }}</li>
+                        </ul>
+                        <p class="project-desc" :title="ls.des">{{ ls.des }}</p>
+                        <div class="project-actions">
+                            <a v-if="ls.url" :href="ls.url" target="_blank" rel="noopener noreferrer" class="demo-link">
+                                Live Demo
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
+                            </a>
+                            <div class="mobile-actions">
+                                <a v-if="ls.githubLink" :href="ls.githubLink" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.27-.01-1-.01-1.96-3.2.7-3.88-1.54-3.88-1.54-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.34.95.1-.74.4-1.24.73-1.53-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.36.78 1.07.78 2.16 0 1.56-.01 2.82-.01 3.2 0 .31.21.68.8.56C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+                                </a>
+                                <a v-if="hasDownload(ls)" :href="ls.downloadLink" target="_blank" rel="noopener noreferrer" aria-label="Download">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </article>
             </div>
+        </div>
+    </section>
 
-        </div>
-        <div class="title h-1/6 cursor-pointer bg-white">
-            <a target="_blank" :href=ls.url style="display:block"
-               class="description w-full h-full  p-3  text-xl text-left font-bold hover:underline">{{ls.name}}</a>
-        </div>
-        <div class="description h-1/6  p-3 pt-0 cursor-pointer bg-white">
-            <p class="w-full h-full text-sm text-gray-500 break-all overflow-hidden text-left" :title=ls.des>
-                {{ls.des}}</p>
-        </div>
-    </div>
-</div>
-<footer class="bg-gray-900 w-full h-60 ">
+</main>
 
+<footer class="site-footer">
+    <div>© <span id="year"></span> · Extra</div>
+    <div class="meta">Projects · Experiments · Playground</div>
 </footer>
-<script src="https://cdn.jsdelivr.net/npm/vue-resource@1.5.3"></script>
-<script>
-    Vue.use(VueResource);
-    Vue.config.productionTip = false;
 
+<script>
+    Vue.config.productionTip = false;
     new Vue({
-        el: "#app",
+        el: '#app',
         data: {
-            lists: []
+            lists: { lists: [] },
+            loading: true,
+            error: null
         },
-        beforeMount() {
-            this.$http.get('/data/lists.json',).then(res => {
-                this.lists = JSON.parse(res.bodyText); // 获取到数据
-            })
+        computed: {
+            sortedLists: function () {
+                if (!this.lists.lists) return [];
+                return this.lists.lists.slice().sort(function (a, b) {
+                    return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
+                });
+            }
         },
-    })
+        mounted: function () {
+            var self = this;
+            fetch('/data/lists.json', { cache: 'no-store' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(function (data) {
+                    self.lists = data;
+                })
+                .catch(function (e) {
+                    self.error = '加载失败：' + e.message;
+                })
+                .finally(function () {
+                    self.loading = false;
+                });
+        },
+        methods: {
+            hasDownload: function (item) {
+                if (!item.downloadLink) return false;
+                var v = String(item.downloadLink).trim();
+                return v.length > 0 && v !== '#' && v !== 'javascript:;';
+            }
+        }
+    });
+
+    document.getElementById('year').textContent = new Date().getFullYear();
 </script>
+
 </body>
 </html>
