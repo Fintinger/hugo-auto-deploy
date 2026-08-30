@@ -103,7 +103,12 @@
                 day: parsed.day,
                 isIndex: isIndex,
                 isBundle: isIndex && hasBundle,
-                assetsPath: hasBundle ? (parsed.directory + 'index.assets/') : null,
+                // assetsPath is only meaningful for the bundle entry point
+                // (index.md with an index.assets/ sibling). For a sibling
+                // .md in the same directory it must be null — otherwise the
+                // delete flow would treat the bundle's images as belonging
+                // to the sibling article and drop them on its delete.
+                assetsPath: (isIndex && hasBundle) ? (parsed.directory + 'index.assets/') : null,
                 sha: e.sha,
                 size: typeof e.size === 'number' ? e.size : null
             });

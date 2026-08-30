@@ -1436,3 +1436,236 @@ V1 已收官，需要把所有分散在多次会话中的架构/安全/数据完
 - **V1 进入 MAINTENANCE MODE**：除非用户明确提出新需求，不主动扩展
 
 ---
+
+## 2026-08-30
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 13.1 — Admin V1 P0 Bug Fix（Stage 9B+ 收尾）：修复保存/新建后文章树不刷新问题。
+
+1. **`static/admin/js/github-api.js`**：为 `fetch` 增加超时保护
+   - 新增 `DEFAULT_TIMEOUT_MS = 30000`
+   - `request()` 改用 `AbortController` 实现 fetch 超时
+   - `AbortError` 映射为 `code: 'TIMEOUT'`，携带用户友好消息「请求超时（30秒），请重试或检查网络」
+   - 其它错误码（NETWORK_ERROR / SERVER_ERROR 等）保留原行为
+2. **`static/admin/js/app.js`**：
+   - `formatError()` 增加 `TIMEOUT` 分支
+   - 新增 `loadArticlesFresh()`：`getBranch → getCommit → getTreeAt` 三步链，按 `commit.treeSha` 直接拉取 tree，绕过 GitHub CDN 缓存
+   - 替换 4 处 `loadArticles()` 调用为 `loadArticlesFresh()`：
+     - `saveEdit()` 在 `updateFile` 成功之后（line 1050）
+     - 编辑表单「保存+图片」路径（line 1354）
+     - `submitNewArticle()` 在 `createFile` 成功之后（line 1678）
+     - `submitNewArticleWithImages()` 在 `commitChanges` 成功之后（line 1789，本回合新增）
+   - 修复 `backToListBtn` 点击处理器：把 `URL.revokeObjectURL(state.edit.previewUrl)` 包进 `try/catch`，避免 plain edit session 中 `previewUrl === undefined` 时抛 `TypeError` 静默吞掉后续清空逻辑
+   - 顶部增加 `var ADMIN_BASE_DIR = '/admin'` 与 `var REPOSITORY = API.REPOSITORY`（顶层常量）
+3. **`docs/CHANGELOG_AI.md`**：本条目
+
+### 修改文件
+
+- `static/admin/js/github-api.js`（新增超时分支）
+- `static/admin/js/app.js`（新增 `loadArticlesFresh`、替换 4 处调用、修 `backToListBtn` handler、新增顶层常量）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+用户反馈 P0 缺陷：保存或新建文章后，左侧文章树无法立即显示新文章/更新后的文章，直到手动点刷新按钮才更新。根因是 GitHub Contents/Trees API 在 CDN 层有缓存，单纯 `getTree` 仍可能拿到 stale 快照。修复策略是在保存成功后用 `getCommit` 拿到最新 `commitSha`，再用 `commit.treeSha` 调用 `getTreeAt` 绕开缓存。
+
+`fetch` 加超时是配套加固：Admin 在国内访问 GitHub API 偶发长时间挂起，超时前会一直转圈，且 `AbortController` 缺失会让用户误以为「死锁」。`previewUrl` `try/catch` 是次要 bug 顺手修，避免与主修复混淆。
+
+### 测试结果
+
+- `node --check static/admin/js/app.js`：OK
+- `node tools/admin-static-check.js`：**全部通过（0 失败）**
+  - 7 个 JS 文件无 console / eval / new Function / document.write / force:true
+  - 4 个 CDN 资源都有 integrity + crossorigin，SRI 标准 Base64
+  - `vercel.json` valid JSON + /admin 双规则
+  - Hugo BUILD_OK（257 pages）
+  - `node --check` 全部 JS 文件通过
+- `node` 跑 `parseFrontMatter` + `extractFields` 解析 `content/posts/2026/08/30/test.md`：返回 `{title:"test", date:"2026-08-30", categories:["test"], tags:["test"], math:true}`，正常
+
+### 注意事项
+
+- **AI 已验证**：node --check + admin-static-check + Hugo build + frontmatter 解析
+- **用户应验证**：生产环境真实 PAT 下，新建文章 / 编辑保存 / 编辑+图片 / 新建+图片 四个路径是否都能让左侧树立即出现新条目（无需手动刷新）；30 秒无响应是否出现 toast 提示并恢复按钮
+- **测试残留**：`content/posts/2026/08/30/测试.md`、`test.md`、`index.assets/favicon.jpg` 是用户测试产生的文章/图片，需用户登录 Admin 后用「删除」功能清理
+- **遗留脚本**：`diagnose-fm.js`（untracked）是上一会话用过的诊断脚本，建议用户提交前删除或归档
+
+---
+
+## 2026-08-30
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 13.2 — 修复 Admin V1 五个生产 P0 Bug（基于真实部署复现）：
+
+1. **Bug 1：列表不刷新**
+   - **根因**：`loadArticlesFresh()` 顶部的 `if (state.loadingArticles) return;` 守卫。当 token 连接成功后自动 `loadArticles()`（loadingArticles 设为 true）→ 用户在请求未返回时立刻操作（新建/编辑/保存）→ 最终调 `loadArticlesFresh()` → loadingArticles 仍为 true → 函数立即 return → 树永远不刷新
+   - **修复**：移除 `loadArticlesFresh()` 的 loadingArticles 锁；引入 `articlesGeneration` 计数器。两个函数都每次 ++gen，回调里 `if (gen !== articlesGeneration) return` 丢弃过期结果。这样保存/新建能立即覆盖正在进行的初始 load，又防止旧请求污染新 state
+
+2. **Bug 2：删除 bundle 文章时 images 残留**
+   - **根因 A**：`openDeleteModal()` 用 `API.listContents(dirPath)` 拿实际文件清单。GitHub Contents API **非递归**，只列单层目录。所以 `index.assets/favicon.jpg` 永远进不了 `actualDelete`
+   - **根因 B**：`article.assetsPath` 在 `article.js` 里条件是 `hasBundle ? (parsed.directory + 'index.assets/') : null`。但 `hasBundle = !!bundleDirs[parsed.directory]` 只看「本目录是否有 index.assets/」，跟文件名无关。结果同目录的 `test.md`、`测试.md` 的 `assetsPath` 也被错指成 bundle 的 assets 目录
+   - **修复**：
+     - `openDeleteModal()` 改用 `getBranch → getCommit → getTreeAt(commit.treeSha, recursive)`，对 article.directory 前缀做范围过滤，递归识别所有 entry（.md + index.assets 下所有 blob + tree 本身）
+     - `article.js` 把 `assetsPath` 条件改成 `isIndex && hasBundle`，与 `isBundle` 一致
+
+3. **Bug 3：编辑 metadata 不加载**
+   - **根因**：经诊断 `parseFrontMatter` + `extractFields` 对 `test.md`/`测试.md`/`index.md` 实测均返回正确 fields（`{title, date, categories, tags, draft, math}`）。代码层无 bug；可能为历史版本残留或浏览器缓存旧 index.html 导致前端模块未更新
+   - **修复**：加固 `loadArticleForEdit()` 和 `reloadEditFromLatest()`：
+     - populate 前先 `setEditSubmitting(false)` 释放 readOnly
+     - 每个字段加防御 fallback（`fields && fields.title ? String(fields.title) : ''`），避免单个字段缺失时整体空白
+   - **附带发现**：仓库里 `content/posts/2026/08/30/index.md` 的 frontmatter `title: "dmin Stage 5 Real Test..."` **真的缺首字符 "A"**（body 里的 H1 是 `# Admin Stage 5 Test`）。这是**之前 patch 流程写入脏数据**的历史问题，需用户用 Admin 重新编辑保存修正
+
+4. **Bug 4：删除确认文本异常（"dmin Stage 5 ..."缺字符）**
+   - **根因 A**：`els.edDeleteConfirmHint.textContent = hintText + '：<code>' + escapeHtml(confirmString) + '</code>'` 用 `textContent` 写入 `<code>` 标签，但 textContent 不解析 HTML，用户看到字面 `<code>...</code>`
+   - **根因 B**：escaped title 含特殊字符时，配合 textContent 不渲染 `<code>` 让用户感觉「title 缺字符」
+   - **修复**：hint 改为 DOM 创建 `textNode + <code>textContent</code>` 子节点，`<code>` 真正渲染为 inline 元素
+
+5. **Bug 5：CSP / SRI**
+   - meta CSP 已无 `frame-ancestors` ✓（之前已修，但用户 hard refresh 前可能仍看到警告）
+   - 4 个 CDN SRI hashes 重新计算（marked@12.0.2 / highlight.js@11.9.0 / katex@0.16.11 css+js）全部与当前 CDN 字节一致 ✓
+   - **真实问题**：`vercel.json` 的 CSP `connect-src` 缺少 `https://static.cloudflareinsights.com`，Cloudflare beacon 的 XHR 会被 CSP 拦截
+   - **修复**：两条 header 规则的 `connect-src` 都加上 `https://static.cloudflareinsights.com`
+
+### 修改文件
+
+- `static/admin/js/app.js`
+  - 顶部新增 `var articlesGeneration = 0;`
+  - `loadArticles()` 加 generation 守卫（保留 loadingArticles 锁但接受 stale 丢弃）
+  - `loadArticlesFresh()` 移除 `loadingArticles` 锁，加 generation 守卫
+  - `loadArticleForEdit()` populate 前释放 readOnly + 防御 fallback
+  - `reloadEditFromLatest()` 加防御 fallback
+  - `openDeleteModal()` 改用 `getCommit + getTreeAt` 递归识别路径
+- `static/admin/js/article.js`
+  - `parseTree()` 中 `assetsPath` 条件由 `hasBundle` 改为 `isIndex && hasBundle`
+- `vercel.json`
+  - 两条 CSP `connect-src` 都加 `https://static.cloudflareinsights.com`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+用户报告的真实生产 bug：保存/新建后列表不刷新、bundle 删除不完整、编辑 metadata 不加载、删除确认文本异常、CSP/Cloudflare 被拦截。全部经过代码层根因分析 + 集成测试（`diagnose-fm.js` 模拟）。
+
+### 测试结果
+
+- `node --check` 全部 4 个 admin JS：通过
+- `node tools/admin-static-check.js`：**0 失败**
+  - 7 个 JS 文件无 console / eval / new Function / document.write / force:true
+  - 4 个 CDN 资源都有 integrity + crossorigin，SRI 标准 Base64（重新计算后与 CDN 一致）
+  - vercel.json valid JSON + /admin 双规则 + connect-src 含 cloudflareinsights
+  - Hugo BUILD_OK
+- 集成诊断 `diagnose-fm.js`：
+  - `parseTree(sampleTree)` 正确识别 5 篇文章（3 个在 08/30 目录，2 个其他日期）
+  - 删除 `index.md`（bundle）→ actualDelete = `[index.md, index.assets/favicon.jpg]`，sibling 保留 test.md/测试.md/index.assets ✓
+  - 删除 `test.md`（非 bundle）→ actualDelete = `[test.md]`，favicon.jpg **不被误删** ✓（修复 article.js 后的正确行为）
+  - extractFields 对 test.md/测试.md/index.md 实测全部返回正确 fields
+
+### 注意事项
+
+- **AI 已验证**：node --check + admin-static-check + Hugo build + 集成模拟
+- **用户应验证**（生产）：
+  1. 新建文章 → 列表立即出现（不再需要手动刷新）
+  2. 编辑保存 → 列表立即更新
+  3. 编辑带图片的文章 + 保存 → 列表立即更新
+  4. 删除 bundle 文章（index.md + index.assets/favicon.jpg）→ 两个文件都被删除，无残留
+  5. 编辑 article 时 title/date/tags/categories 正确加载
+  6. 删除确认框 hint 显示纯文本 + 加粗 inline code，无 `<code>` 字面字符串
+  7. Cloudflare analytics beacon 在 Network 面板无 CSP block
+  8. `curl -I https://<deploy>/admin/` 的 CSP header 包含 `connect-src ... static.cloudflareinsights.com`
+- **遗留问题**：仓库里 `content/posts/2026/08/30/index.md` 的 frontmatter title 缺首字符 "A"，是历史脏数据，建议用户在 Admin 里重新编辑一次保存覆盖
+- **测试残留清理**：`content/posts/2026/08/30/测试.md`、`test.md`、`index.assets/favicon.jpg` 仍是用户测试产物，需用户在 Admin 中用「删除」功能清理（现在删除逻辑已修好，可放心使用）
+- **遗留脚本**：`diagnose-fm.js`（untracked）是本回合诊断脚本，提交前请删除
+
+---
+
+## 2026-08-30
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 13.3 — 修复 highlight.js require + Markdown 预览 + delete 504 + 422 错误：
+
+1. **highlight.js `index.js:1 require is not defined`（浏览器控制台报错）**
+   - **根因**：`https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/index.min.js` 是 **CommonJS 模块**，第一行 `var hljs = require('./core')`，浏览器无 `require` 立即抛错。jsdelivr 用 Terser 压缩后 `require` 仍保留。devtools 把 `index.min.js` 简化显示为 `index.js`，所以报错定位为 `index.js:1:12`
+   - **验证**：用 Node vm 实测 `https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/index.min.js` 头部确实 `var hljs=require("./core")`；`lib/core.min.js` 末尾 `module.exports=highlight`（也是 CommonJS）；`/es/*.js` 是 ES module（需 `type="module"`）。**只有 `gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js` 是浏览器友好的 UMD bundle**
+   - **修复**：`static/admin/index.html` 把 highlight.js 的 URL 从 `npm/highlight.js@11.9.0/lib/index.min.js` 改为 `gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js`，host 仍是 `cdn.jsdelivr.net`，**CSP 无需修改**。SRI 重新计算为 `sha384-F/bZzf7p3Joyp5psL90p/p89AZJsndkSoGwRpXcZhleCWhd8SnRuoYo4d0yirjJp`
+
+2. **Markdown 预览显示源码**
+   - **根因**：`wireMarkdownEditor()` 和 `wireEditForm()` 的 debounced input listener 用了守卫 `if (!els.editorSplit || active === 'preview')`。但 desktop CSS 是 side-by-side，editor + preview 同时可见，`data-active` 保持默认 `'edit'`，守卫永远跳过 render。marked v12 本身工作正常（Node vm 实测 `window.marked.parse()` 返回正确字符串）
+   - **修复**：移除 `active === 'preview'` 守卫，input 事件直接 `U.debounce(renderPreview, 220)`。CSS 决定 preview pane 是否可见，markdown.js 内部仍检查 `window.marked` 未加载时 early return
+
+3. **新建文章时控制台 404**
+   - **根因**：`submitNewArticle()` 的 catch 顺序错了——先调 `handleApiError(err)` 再判断 NOT_FOUND。实际 `handleApiError` 对 NOT_FOUND 返回 false（无副作用），但「控制台 404」是浏览器 DevTools Network 面板对 4xx 响应的红色徽章（浏览器原生行为，非 JS 代码）
+   - **修复**：调换 catch 顺序——**先判断 NOT_FOUND 静默 return**（既不 `handleApiError` 也不 toast 也不清 token），再对真错误调 `handleApiError` + `throw`
+
+4. **删除 bundle 文章 504 + 0 file changed**
+   - **根因 A**：`openDeleteModal()` 用 `article.assetsPath`（末尾带 `/`）与 GitHub tree entry path（无末尾 `/`，如 `index.assets`）做 `indexOf` 匹配 → 永远不匹配 → `index.assets` 目录和里面的 blob 都漏入 actualDelete 集合**不完整**（上一轮只匹配 `index.assets/favicon.jpg` 单文件）
+   - **根因 B**：`deleteArticle()` POST /git/trees body 包含**整个 repo tree**（除要删除的），大仓库触发 GitHub CDN 504
+   - **修复（上一轮）**：
+     - `openDeleteModal()`：去 `assetsPrefix` 末尾 `/`，匹配改为 `e.path === assetsPrefix || e.path.indexOf(assetsPrefix + '/') === 0`
+     - `deleteArticle()`：改用 **sparse tree update** —— 只 POST 要删除的 entries，每个 `{path, sha: null}`，GitHub Tree API 从 `base_tree` 继承其它 entries
+
+5. **删除 bundle 文章 422 Must supply a valid tree.mode（本轮）**
+   - **根因**：上轮 sparse delete 只传 `{path, sha: null}`，省略 `mode` 和 `type`。GitHub Git Trees API 即使对 `sha: null` 删除条目也要求 `path/mode/type` 三字段完整
+   - **修复**：`deleteArticle()` 的 `deletionEntries` 从 `existing[path]`（已在 step 2c 验证时构建的字典）取回原始 tree entry 的 `mode` 和 `type`：
+     - `.md` 文件 → `mode='100644' type='blob'`
+     - `index.assets` 目录 → `mode='040000' type='tree'`
+     - `index.assets/favicon.jpg` → `mode='100644' type='blob'`
+   - fallback：`(original && original.mode) || '100644'`、`(original && original.type) || 'blob'`
+
+### 修改文件
+
+- `static/admin/index.html`：highlight.js URL + SRI
+- `static/admin/js/app.js`：
+  - `wireMarkdownEditor()` 移除 `active === 'preview'` 守卫
+  - `wireEditForm()` 同样修复
+  - `submitNewArticle()` catch 顺序调换（NOT_FOUND 优先静默）
+  - `openDeleteModal()` assetsPrefix 去末尾 `/` + 改进匹配
+- `static/admin/js/github-api.js`：
+  - `deleteArticle()` sparse body 加 `mode` / `type` 字段
+  - 删除未使用的 `isPathInList` 死代码
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+用户在生产浏览器实测报告三个独立 P0 bug：
+1. `index.js:1 require is not defined` —— highlight.js 用了 npm 包的 CommonJS 入口
+2. Markdown 预览在桌面端 side-by-side 模式下永不更新
+3. 删除 bundle 文章先 504 后 422
+
+每个 bug 都按「先分析输出根因 → 再改代码 → 再验证」流程，未修改已完成修复（loadArticlesFresh / delete bundle recursive / frontmatter parser / 现有 CSP）。
+
+### 测试结果
+
+- `node --check`：全部 7 个 admin JS 通过
+- `node tools/admin-static-check.js`：**0 失败**（含 Hugo BUILD_OK + SRI 校验）
+- 集成诊断 `diagnose-fm.js`：
+  - 删除 bundle（index.md + index.assets + index.assets/favicon.jpg）→ POST body 3 entries，全部带正确 mode/type：
+    - `index.md` → `{mode:'100644', type:'blob', sha:null}`
+    - `index.assets` → `{mode:'040000', type:'tree', sha:null}`
+    - `index.assets/favicon.jpg` → `{mode:'100644', type:'blob', sha:null}`
+  - marked.parse 实测返回正确 HTML 字符串
+- 网络层验证（curl）：`/admin/js/app.js` 与 `/admin/js/github-api.js` Hugo Fast Render 实时返回最新版本
+
+### 注意事项
+
+- **AI 已验证**：node --check + admin-static-check + Hugo build + 集成模拟 + curl Hugo 服务器
+- **用户应验证**（生产）：
+  1. hard refresh 后浏览器 console **无** `index.js:1 require is not defined`
+  2. 桌面端新建文章表单输入 markdown → 右侧预览 pane 实时渲染 HTML（不显示源码）
+  3. 桌面端编辑文章 → 预览 pane 实时渲染
+  4. 删除 bundle 文章（`index.md` + `index.assets/favicon.jpg`）→ POST `/git/trees` 返回 **200**（不再 422/504），commit diff 显示两个文件被删除，`index.assets` 子树自动 omit
+  5. 删除非 bundle 文章 → commit diff 显示 1 file deleted
+  6. 新建文章流程：浏览器 Network 面板的 404 红色徽章仍会显示（GitHub Contents API 对不存在路径返回 404），但 JS 不再有任何错误/警告处理，createFile 正常继续
+- **遗留脚本**：`diagnose-fm.js`（untracked）已清理
+- **遗留脏数据**：`content/posts/2026/08/30/index.md` 的 frontmatter title 缺首字符 "A"，用户可在 Admin 里重新编辑保存覆盖
+- **测试残留**：`content/posts/2026/08/30/测试.md`、`test.md`、`index.assets/favicon.jpg` 需用户登录 Admin 用「删除」清理
+
+---
+
+---

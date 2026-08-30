@@ -33,6 +33,7 @@
 
     var MAX_RETRIES = 3;
     var RETRY_BASE_MS = 600; // 600, 1200, 2400
+    var DEFAULT_TIMEOUT_MS = 30000; // 30 seconds per request (prevents indefinite hangs)
 
     /* ============================================
        AdminError
@@ -166,7 +167,18 @@
                 headers['Content-Type'] = 'application/json';
             }
 
+            // Set up timeout via AbortController (falls back to no timeout if unavailable).
+            var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            var timer = null;
+            if (controller && DEFAULT_TIMEOUT_MS > 0) {
+                fetchOpts.signal = controller.signal;
+                timer = setTimeout(function () {
+                    try { controller.abort(); } catch (e) { /* ignore */ }
+                }, DEFAULT_TIMEOUT_MS);
+            }
+
             return fetch(url, fetchOpts).then(function (response) {
+                if (timer) clearTimeout(timer);
                 updateRateLimitFromHeaders(response.headers);
                 return response.text().then(function (text) {
                     var data = null;
@@ -203,11 +215,18 @@
                     };
                 });
             }, function (networkErr) {
+                if (timer) clearTimeout(timer);
+                var msg = (networkErr && networkErr.message) || '网络异常';
+                var isTimeout = !!(networkErr && networkErr.name === 'AbortError');
+                var code = isTimeout ? 'TIMEOUT' : 'NETWORK_ERROR';
+                var userMsg = isTimeout
+                    ? '请求超时（' + (DEFAULT_TIMEOUT_MS / 1000) + '秒）。请检查网络后重试。'
+                    : msg;
                 return {
                     ok: false,
                     status: 0,
-                    code: 'NETWORK_ERROR',
-                    error: new AdminError('NETWORK_ERROR', (networkErr && networkErr.message) || '网络异常', { original: String(networkErr) })
+                    code: code,
+                    error: new AdminError(code, userMsg, { original: String(networkErr) })
                 };
             });
         }
@@ -485,29 +504,35 @@
                                 '文件不存在: ' + opts.paths[j]);
                         }
                     }
-                    // Step 3: Build new tree (base_tree + omit deleted entries).
-                    var newTree = [];
-                    for (var k = 0; k < treeRes.tree.length; k++) {
-                        var entry = treeRes.tree[k];
-                        if (existing[entry.path] && isPathInList(entry.path, opts.paths)) {
-                            // Omit — GitHub interprets missing entry as delete.
-                            continue;
-                        }
-                        // Keep original entry. Note: GitHub Tree API requires
-                        // { path, mode, type, sha } for blob entries.
-                        newTree.push({
-                            path: entry.path,
-                            mode: entry.mode || '100644',
-                            type: entry.type,
-                            sha: entry.sha
+                    // Step 3: Build a sparse tree update — only the deletion entries.
+// We send only the paths we want to remove (each with sha:null). GitHub
+// applies these against base_tree and inherits every other path from it.
+// Sending N deletion entries instead of (N - len(paths)) full entries
+// keeps the request body tiny and avoids 504 timeouts on large repos.
+//
+// GitHub requires every entry — even a deletion with sha:null — to carry
+// `path`, `mode`, and `type`. We source mode/type from the original tree
+// entry (looked up via the `existing` dict built above) so:
+//   - a regular .md file comes back with mode='100644' type='blob'
+//   - an assets subtree comes back with mode='040000' type='tree'
+// GitHub will then drop each entry from the new tree.
+                    var deletionEntries = [];
+                    for (var p = 0; p < opts.paths.length; p++) {
+                        var original = existing[opts.paths[p]];
+                        deletionEntries.push({
+                            path: opts.paths[p],
+                            mode: (original && original.mode) || '100644',
+                            type: (original && original.type) || 'blob',
+                            sha: null
                         });
                     }
-                    // Step 4: POST trees (create new tree with base_tree).
+                    // Step 4: POST trees (create new tree with base_tree +
+                    // sparse deletion entries).
                     return _request(token, 'POST',
                         '/repos/' + encodeURIComponent(REPOSITORY.owner) +
                         '/' + encodeURIComponent(REPOSITORY.repo) +
                         '/git/trees',
-                        { base_tree: parentTreeSha, tree: newTree }
+                        { base_tree: parentTreeSha, tree: deletionEntries }
                     ).then(function (treeCreateRes) {
                         if (!treeCreateRes.ok) throw treeCreateRes.error;
                         var newTreeSha = treeCreateRes.data.sha;
@@ -556,11 +581,6 @@
                 });
             });
         });
-    }
-
-    function isPathInList(p, list) {
-        for (var i = 0; i < list.length; i++) if (list[i] === p) return true;
-        return false;
     }
 
     /**

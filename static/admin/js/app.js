@@ -22,6 +22,12 @@
     var M = window.ArticleModel;
     var STORAGE_KEY_TOKEN = 'admin.github.token';
 
+    // Generation counter for loadArticles / loadArticlesFresh. Any in-flight
+    // request whose gen !== articlesGeneration at completion is discarded —
+    // this prevents stale tree snapshots from clobbering a newer one when
+    // a save/create fires before the initial load completes.
+    var articlesGeneration = 0;
+
     var els = {
         tokenInput: document.getElementById('token-input'),
         toggleVisibility: document.getElementById('toggle-token-visibility'),
@@ -236,6 +242,7 @@
         }
         if (err.code === 'SERVER_ERROR')   return 'GitHub 服务异常（5xx），请稍后重试';
         if (err.code === 'NETWORK_ERROR')  return '网络异常，请检查连接';
+        if (err.code === 'TIMEOUT')         return '请求超时（30秒），请检查网络后重试';
         if (err.code === 'VALIDATION')     return '请求参数无效：' + (err.message || '');
         return err.message || err.code || '未知错误';
     }
@@ -417,12 +424,14 @@
         if (!state.token || state.status !== 'connected') return;
         if (state.loadingArticles) return;
         state.loadingArticles = true;
+        var gen = ++articlesGeneration;
         setArticleError(null);
         if (els.refreshBtn) els.refreshBtn.disabled = true;
         if (els.treeStatus) els.treeStatus.textContent = '正在加载 Git Tree...';
         if (els.truncatedBanner) els.truncatedBanner.hidden = true;
 
         API.getTree(state.token, true).then(function (treeRes) {
+            if (gen !== articlesGeneration) return; // stale — a newer request superseded us
             state.truncated = !!treeRes.truncated;
             var articles = M.parseTree(treeRes.tree);
             M.sortArticles(articles);
@@ -445,10 +454,72 @@
                 (state.truncated ? '（Tree 被截断，可能不全）' : '');
             if (els.treeStatus) els.treeStatus.textContent = msg;
         }).catch(function (err) {
+            if (gen !== articlesGeneration) return; // stale — ignore error
             handleApiError(err);
             setArticleError(formatError(err));
             if (els.treeStatus) els.treeStatus.textContent = '加载失败';
         }).then(function () {
+            if (gen !== articlesGeneration) return;
+            state.loadingArticles = false;
+            if (els.refreshBtn) els.refreshBtn.disabled = false;
+        });
+    }
+
+    /**
+     * loadArticlesFresh: bypass GitHub CDN tree caching by first fetching
+     * the latest commit SHA via getCommit, then getTreeAt with that specific
+     * SHA. Use after saveEdit / submitNewArticle so the new article
+     * immediately appears in the tree.
+     *
+     * CRITICAL: Unlike loadArticles(), this function MUST run even if a
+     * previous loadArticles() is still in flight. After save/create we need
+     * the latest tree right now — bailing out on state.loadingArticles would
+     * leave the user with a stale tree until the in-flight load completes.
+     *
+     * We use a generation counter (articlesGeneration) to discard the result
+     * of any earlier in-flight loadArticles() / loadArticlesFresh() if a
+     * newer one starts while it is still pending.
+     */
+    function loadArticlesFresh() {
+        if (!state.token || state.status !== 'connected') return;
+        var gen = ++articlesGeneration;
+        setArticleError(null);
+        if (els.refreshBtn) els.refreshBtn.disabled = true;
+        if (els.treeStatus) els.treeStatus.textContent = '正在加载最新 Tree...';
+        if (els.truncatedBanner) els.truncatedBanner.hidden = true;
+
+        API.getBranch(state.token).then(function (branch) {
+            return API.getCommit(state.token, branch.commitSha).then(function (commit) {
+                return API.getTreeAt(state.token, commit.treeSha, true);
+            });
+        }).then(function (treeRes) {
+            if (gen !== articlesGeneration) return; // stale — a newer request superseded us
+            state.truncated = !!treeRes.truncated;
+            var articles = M.parseTree(treeRes.tree);
+            M.sortArticles(articles);
+            state.articles = articles;
+            state.directoryTree = M.buildDirectoryTree(articles);
+            state.collapsed = Object.create(null);
+            if (state.directoryTree.yearOrder.length > 1) {
+                for (var i = 1; i < state.directoryTree.yearOrder.length; i++) {
+                    state.collapsed['y:' + state.directoryTree.yearOrder[i]] = true;
+                }
+            }
+            renderArticleTree();
+            renderArticleCount();
+            if (els.truncatedBanner) {
+                els.truncatedBanner.hidden = !state.truncated;
+            }
+            var msg = '共 ' + articles.length + ' 篇文章' +
+                (state.truncated ? '（Tree 被截断，可能不全）' : '');
+            if (els.treeStatus) els.treeStatus.textContent = msg;
+        }).catch(function (err) {
+            if (gen !== articlesGeneration) return; // stale — ignore error
+            handleApiError(err);
+            setArticleError(formatError(err));
+            if (els.treeStatus) els.treeStatus.textContent = '加载失败';
+        }).then(function () {
+            if (gen !== articlesGeneration) return;
             state.loadingArticles = false;
             if (els.refreshBtn) els.refreshBtn.disabled = false;
         });
@@ -782,18 +853,24 @@
             state.edit.latestRaw = file.content;
             state.edit.latestSha = file.sha;
 
-            // Populate form.
-            if (els.edTitle) els.edTitle.value = fields.title || '';
-            if (els.edDate) els.edDate.value = fields.date || '';
-            if (els.edCategories) els.edCategories.value = (fields.categories || []).join(', ');
-            if (els.edTags) els.edTags.value = (fields.tags || []).join(', ');
-            if (els.edDraft) els.edDraft.checked = !!fields.draft;
-            if (els.edMath) els.edMath.checked = !!fields.math;
-            if (els.edBody) els.edBody.value = parsed.body;
+            // Release readOnly BEFORE populating — some browsers / input
+            // types can refuse programmatic value updates on readOnly fields
+            // in certain focus states. Releasing first guarantees a clean
+            // assignment.
+            setEditSubmitting(false);
+
+            // Populate form (defensive: every field has an explicit fallback
+            // so a missing extractor field never blanks an input).
+            if (els.edTitle) els.edTitle.value = fields && fields.title ? String(fields.title) : '';
+            if (els.edDate) els.edDate.value = fields && fields.date ? String(fields.date) : '';
+            if (els.edCategories) els.edCategories.value = Array.isArray(fields && fields.categories) ? fields.categories.join(', ') : '';
+            if (els.edTags) els.edTags.value = Array.isArray(fields && fields.tags) ? fields.tags.join(', ') : '';
+            if (els.edDraft) els.edDraft.checked = !!(fields && fields.draft);
+            if (els.edMath) els.edMath.checked = !!(fields && fields.math);
+            if (els.edBody) els.edBody.value = parsed.body != null ? parsed.body : '';
 
             if (els.edLoadStatus) els.edLoadStatus.hidden = true;
             state.edit.isLoading = false;
-            setEditSubmitting(false);
         }).catch(function (err) {
             handleApiError(err);
             state.edit = null;
@@ -825,13 +902,13 @@
         state.edit.latestSha = file.sha;
         state.edit.isDirty = false;
 
-        if (els.edTitle) els.edTitle.value = fields.title || '';
-        if (els.edDate) els.edDate.value = fields.date || '';
-        if (els.edCategories) els.edCategories.value = (fields.categories || []).join(', ');
-        if (els.edTags) els.edTags.value = (fields.tags || []).join(', ');
-        if (els.edDraft) els.edDraft.checked = !!fields.draft;
-        if (els.edMath) els.edMath.checked = !!fields.math;
-        if (els.edBody) els.edBody.value = parsed.body;
+        if (els.edTitle) els.edTitle.value = fields && fields.title ? String(fields.title) : '';
+        if (els.edDate) els.edDate.value = fields && fields.date ? String(fields.date) : '';
+        if (els.edCategories) els.edCategories.value = Array.isArray(fields && fields.categories) ? fields.categories.join(', ') : '';
+        if (els.edTags) els.edTags.value = Array.isArray(fields && fields.tags) ? fields.tags.join(', ') : '';
+        if (els.edDraft) els.edDraft.checked = !!(fields && fields.draft);
+        if (els.edMath) els.edMath.checked = !!(fields && fields.math);
+        if (els.edBody) els.edBody.value = parsed.body != null ? parsed.body : '';
     }
 
     function markEditDirty() {
@@ -997,7 +1074,7 @@
                     reloadEditFromLatest(reloaded);
                 }).catch(function () { /* ignore */ });
 
-                loadArticles();
+                loadArticlesFresh();
             });
         }).catch(function (err) {
             handleApiError(err);
@@ -1168,26 +1245,52 @@ function updateEditCdnStatus() {
         if (els.edDeleteConfirmBtn) els.edDeleteConfirmBtn.disabled = true;
         els.edDeleteModal.hidden = false;
 
-        // Query remote tree (the parent directory of article.path) to get
-        // the actual file list — do not trust cached tree.
         var sepIdx = article.path.lastIndexOf('/');
         var dirPath = sepIdx > 0 ? article.path.substring(0, sepIdx) : '';
         var fileName = sepIdx > 0 ? article.path.substring(sepIdx + 1) : article.path;
 
-        API.listContents(state.token, dirPath).then(function (res) {
-            // Build actual delete set.
+        // Use getCommit + getTreeAt(commit.treeSha, recursive) instead of
+        // listContents(dirPath). The contents API is non-recursive, so it
+        // never returns files under index.assets/. As a result, deleting
+        // a bundle article left every image behind in the repo.
+        //
+        // We collect:
+        //   - actualDelete: every blob/tree entry inside dirPath that
+        //     belongs to this article (the .md itself + every entry
+        //     under index.assets/ when bundle)
+        //   - siblingKeep:  everything else inside dirPath
+        API.getBranch(state.token).then(function (branch) {
+            return API.getCommit(state.token, branch.commitSha).then(function (commit) {
+                return API.getTreeAt(state.token, commit.treeSha, true);
+            });
+        }).then(function (treeRes) {
+            if (treeRes.truncated) {
+                throw new API.AdminError('VALIDATION',
+                    'Tree API 返回截断数据（仓库过大），无法安全删除。');
+            }
+            // article.directory already ends with '/', use it directly as prefix.
+            var dirPrefix = article.directory || (dirPath ? dirPath + '/' : '');
+            // article.assetsPath ends with '/' in our article model, but
+            // GitHub Tree entry paths do NOT (e.g. 'index.assets', not
+            // 'index.assets/'). Strip the trailing slash so prefix matches
+            // both the directory entry itself and every file under it.
+            var assetsPrefix = (article.assetsPath || '').replace(/\/+$/, '');
             var actualDelete = [];
             var siblingKeep = [];
-            for (var i = 0; i < res.items.length; i++) {
-                var it = res.items[i];
-                if (it.path === article.path) {
-                    actualDelete.push(it.path);
-                } else if (it.path.indexOf(article.assetsPath) === 0 && article.assetsPath) {
-                    // Asset belonging to this bundle.
-                    actualDelete.push(it.path);
+            for (var i = 0; i < treeRes.tree.length; i++) {
+                var e = treeRes.tree[i];
+                // Only consider entries under this article's directory.
+                if (dirPrefix && e.path.indexOf(dirPrefix) !== 0) continue;
+                var inBundle = !!(assetsPrefix &&
+                    (e.path === assetsPrefix ||
+                     e.path.indexOf(assetsPrefix + '/') === 0));
+                var isArticleFile = (e.path === article.path);
+                if (isArticleFile || inBundle) {
+                    actualDelete.push(e.path);
                 } else {
-                    // Sibling file (another .md or shared asset) — keep.
-                    siblingKeep.push(it.path);
+                    // Sibling file (another .md or unrelated tree entry)
+                    // at the same depth — keep.
+                    siblingKeep.push(e.path);
                 }
             }
 
@@ -1251,7 +1354,18 @@ function updateEditCdnStatus() {
             // Show what the user must type in the input placeholder and hint.
             if (els.edDeleteConfirmInput) els.edDeleteConfirmInput.placeholder = confirmString;
             if (els.edDeleteConfirmHint) {
-                els.edDeleteConfirmHint.textContent = hintText + '：<code>' + escapeHtml(confirmString) + '</code>';
+                // Build the hint as real DOM nodes so <code> renders as a
+                // styled inline element instead of literal text. Setting
+                // textContent with '<code>...</code>' leaves the literal
+                // tags visible to the user and causes the title to appear
+                // "missing characters".
+                while (els.edDeleteConfirmHint.firstChild) {
+                    els.edDeleteConfirmHint.removeChild(els.edDeleteConfirmHint.firstChild);
+                }
+                els.edDeleteConfirmHint.appendChild(document.createTextNode(hintText + '：'));
+                var codeEl = document.createElement('code');
+                codeEl.textContent = confirmString;
+                els.edDeleteConfirmHint.appendChild(codeEl);
             }
         }).catch(function (err) {
             handleApiError(err);
@@ -1301,7 +1415,7 @@ function updateEditCdnStatus() {
             if (els.editForm) els.editForm.hidden = true;
             setEditBanner('已删除 ' + dp.paths.length + ' 个文件（Commit ' +
                 (result.commitSha || '').slice(0, 7) + '）。等待 Vercel 自动部署。', 'success');
-            loadArticles(); // refresh tree from GitHub
+            loadArticlesFresh(); // refresh tree from GitHub (bypass CDN cache)
         }).catch(function (err) {
             handleApiError(err);
             if (err && err.code === 'CONFLICT') {
@@ -1343,7 +1457,10 @@ function updateEditCdnStatus() {
                     return;
                 }
                 if (state.edit) {
-                    URL.revokeObjectURL(state.edit.previewUrl);
+                    // Safe revoke — previewUrl may not exist on plain edit session.
+                    try {
+                        if (state.edit.previewUrl) URL.revokeObjectURL(state.edit.previewUrl);
+                    } catch (e) { /* ignore */ }
                     state.edit = null;
                 }
                 state.selectedArticle = null;
@@ -1407,12 +1524,10 @@ function updateEditCdnStatus() {
             });
         }
         if (els.edBody) {
-            var debouncedRender = U.debounce(function () {
-                var active = els.edEditorSplit && els.edEditorSplit.getAttribute('data-active');
-                if (!els.edEditorSplit || active === 'preview') {
-                    renderEditPreview();
-                }
-            }, 220);
+            // See wireMarkdownEditor for the rationale: always render on
+            // input. Desktop side-by-side layout never sets
+            // data-active === 'preview', so a guard here would skip rendering.
+            var debouncedRender = U.debounce(renderEditPreview, 220);
             els.edBody.addEventListener('input', debouncedRender);
         }
         setEditActiveTab('edit');
@@ -1596,7 +1711,11 @@ function updateEditCdnStatus() {
             // 200 — file already exists.
             throw new API.AdminError('CONFLICT', '该文章路径已经存在，请修改文件名或日期');
         }).catch(function (err) {
-            handleApiError(err);
+            // NOT_FOUND is the EXPECTED outcome for a brand-new article —
+            // the contents API returns 404 when the path does not exist.
+            // Treat it as a non-error: do not call handleApiError, do not
+            // surface a toast, do not clear the token. Just dispatch the
+            // create path (with or without pending image uploads).
             if (err && err.code === 'NOT_FOUND') {
                 // Good — no conflict.
                 // Stage 9B — dispatch based on pending uploads.
@@ -1605,7 +1724,8 @@ function updateEditCdnStatus() {
                 }
                 return API.createFile(state.token, path, content, commitMsg);
             }
-            // Any other error (auth/network/etc): propagate.
+            // Real error (auth/network/etc): surface it and propagate.
+            handleApiError(err);
             throw err;
         }).then(function (result) {
             // Success.
@@ -1622,7 +1742,7 @@ function updateEditCdnStatus() {
             }
             resetForm();
             hideNewArticleForm();
-            loadArticles(); // Refresh list to include the new file.
+            loadArticlesFresh(); // Refresh list to include the new file (bypass CDN cache)
         }).catch(function (err) {
             handleApiError(err);
             setFormBanner(formatError(err));
@@ -1733,7 +1853,7 @@ function updateEditCdnStatus() {
             U.toast('✓ 已发布（含 ' + pending.length + ' 张图片，Commit ' + shortSha + '）', 'success', 6000);
             resetForm();
             hideNewArticleForm();
-            loadArticles();
+            loadArticlesFresh(); // Refresh tree to include the new article + images (bypass CDN cache)
         });
     }
 
@@ -2216,14 +2336,13 @@ function updateEditCdnStatus() {
 
     function wireMarkdownEditor() {
         // Render preview when body changes (debounced).
+        // The previous guard `active === 'preview'` skipped rendering on
+        // desktop, where the editor and preview panes are side-by-side and
+        // `data-active` stays at its default value ('edit'). Always render:
+        // CSS decides whether the preview pane is visible; markdown.js
+        // returns early if window.marked is not loaded.
         if (els.naBody) {
-            var debouncedRender = U.debounce(function () {
-                // Only render when preview pane is visible (desktop or mobile-preview tab).
-                var active = els.editorSplit && els.editorSplit.getAttribute('data-active');
-                if (!els.editorSplit || active === 'preview') {
-                    renderPreview();
-                }
-            }, 220);
+            var debouncedRender = U.debounce(renderPreview, 220);
             els.naBody.addEventListener('input', debouncedRender);
         }
         // Tab switching.
