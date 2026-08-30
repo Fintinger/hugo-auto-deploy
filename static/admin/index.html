@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <!-- CSP / X-Frame-Options / X-Content-Type-Options / Permissions-Policy / X-Robots-Tag
+         are provided by vercel.json (HTTP Response Headers).
+         The meta CSP below is kept as a fallback only. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' blob: https:; font-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://api.github.com; frame-ancestors 'none'; base-uri 'self'; form-action 'none'; object-src 'none';">
+    <title>Archai Blog Admin</title>
+    <link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="./css/admin.css">
+    <!-- marked.js (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" crossorigin="anonymous" integrity="sha384-/TQbtLCAerC3jgaim+N78RZSDYV7ryeoBCVqTuzRrFec2akfBkHS7ACQ3PQhvMVi"></script>
+    <!-- highlight.js (code highlighting) -->
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/core.min.js" crossorigin="anonymous" integrity="sha384-AgxQMf+yw6Uf1s6n3uAzYBsyrF1k2BTgReLMgQ6peEL0t+Hzeoe7Y4eHCCJCv7Pv"></script>
+    <!-- KaTeX (math rendering) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg"></script>
+</head>
+<body>
+
+<header class="topbar">
+    <div class="topbar-inner">
+        <div class="brand">
+            <span class="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7h18M3 12h18M3 17h12"/>
+                </svg>
+            </span>
+            <h1 class="brand-title">Archai Blog Admin</h1>
+        </div>
+        <div class="topbar-right">
+            <span class="status" id="status-badge" data-status="disconnected">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="status-text">未连接</span>
+            </span>
+            <a href="/" class="back-link" rel="noopener">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/>
+                </svg>
+                返回博客
+            </a>
+            <button class="theme-toggle" id="theme-toggle" type="button" aria-label="切换主题" title="切换主题">
+                <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+
+    <section class="hero">
+        <h2>GitHub 连接</h2>
+        <p class="hero-sub">通过 GitHub Personal Access Token 连接仓库，开始管理博客文章。</p>
+    </section>
+
+    <section class="card" id="token-section">
+        <div class="card-header">
+            <h3>Personal Access Token</h3>
+            <span class="muted small">Fine-grained PAT</span>
+        </div>
+
+        <div class="form-row">
+            <label for="token-input" class="label">Token</label>
+            <div class="input-wrap">
+                <input
+                    id="token-input"
+                    type="password"
+                    class="input"
+                    placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx"
+                    autocomplete="off"
+                    spellcheck="false"
+                    autocapitalize="off"
+                    autocorrect="off">
+                <button type="button" class="input-affix" id="toggle-token-visibility" aria-label="显示或隐藏 Token" title="显示/隐藏">
+                    <svg class="icon-eye" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <svg class="icon-eye-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                </button>
+            </div>
+            <p class="hint">Token 仅保存在你的浏览器 sessionStorage，关闭标签页后自动失效。</p>
+        </div>
+
+        <div class="actions">
+            <button type="button" class="btn btn-primary" id="connect-btn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+                连接 GitHub
+            </button>
+            <button type="button" class="btn btn-ghost" id="clear-btn" hidden>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
+                </svg>
+                清除凭证
+            </button>
+        </div>
+
+        <div class="toast-wrap" id="toast-wrap" aria-live="polite"></div>
+    </section>
+
+    <section class="card connected-card" id="connection-info" hidden>
+        <div class="card-header">
+            <h3>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--success); vertical-align: -3px;">
+                    <path d="M20 6L9 17l-5-5"/>
+                </svg>
+                GitHub 已连接
+            </h3>
+        </div>
+        <dl class="info-grid">
+            <dt>用户</dt>
+            <dd id="info-user">—</dd>
+            <dt>仓库</dt>
+            <dd id="info-repo">—</dd>
+            <dt>分支</dt>
+            <dd id="info-branch">—</dd>
+        </dl>
+        <div class="actions">
+            <button type="button" class="btn btn-ghost" id="disconnect-btn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>
+                </svg>
+                断开连接
+            </button>
+        </div>
+        <p class="hint" style="margin-top: 0.85rem;">
+            本阶段仅完成 Token / 仓库 / 分支验证。文章列表、编辑器、图片上传将在后续阶段实现。
+        </p>
+    </section>
+
+    <section class="card article-list-card" id="article-list-card" hidden>
+        <div class="card-header">
+            <h3>文章管理</h3>
+            <div class="card-header-actions">
+                <span class="muted small" id="article-count">— 篇</span>
+                <button type="button" class="btn btn-ghost btn-sm" id="new-article-btn">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    新建文章
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm" id="refresh-articles-btn">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
+                    刷新
+                </button>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <input id="article-search" type="search" class="input" placeholder="搜索文件名 / 路径 / 年月日……" autocomplete="off" spellcheck="false">
+        </div>
+
+        <section class="new-article-form" id="new-article-form" hidden>
+            <div class="form-header">
+                <h4>新建文章</h4>
+                <button type="button" class="btn btn-ghost btn-sm" id="new-article-cancel" aria-label="取消新建">
+                    取消
+                </button>
+            </div>
+
+            <div class="form-row">
+                <label for="na-title" class="label">标题 <span class="required">*</span></label>
+                <input id="na-title" type="text" class="input" placeholder="例如：在线博客编辑测试" maxlength="200" autocomplete="off">
+                <p class="hint" id="na-title-error"></p>
+            </div>
+
+            <div class="form-row">
+                <label for="na-date" class="label">日期 <span class="required">*</span></label>
+                <input id="na-date" type="date" class="input" autocomplete="off">
+                <p class="hint">生成路径：<code id="na-path-preview">content/posts/.../index.md</code></p>
+                <p class="hint" id="na-date-error"></p>
+            </div>
+
+            <div class="form-row">
+                <label for="na-filename" class="label">文件名 <span class="required">*</span></label>
+                <input id="na-filename" type="text" class="input" value="index.md" placeholder="index.md" maxlength="80" autocomplete="off" spellcheck="false">
+                <p class="hint">默认 <code>index.md</code>（Page Bundle 入口）；可改为 <code>network.md</code>、<code>中文标题.md</code> 等。允许中文 / 英文 / 数字 / <code>-</code> / <code>_</code> / <code>.</code> / 空格；不允许路径分隔符。</p>
+                <p class="hint" id="na-filename-error"></p>
+            </div>
+
+            <div class="form-row">
+                <label for="na-categories" class="label">分类</label>
+                <input id="na-categories" type="text" class="input" placeholder="例如：前端, 后端 （用逗号或换行分隔）" autocomplete="off">
+                <p class="hint">留空表示无分类</p>
+            </div>
+
+            <div class="form-row">
+                <label for="na-tags" class="label">标签</label>
+                <input id="na-tags" type="text" class="input" placeholder="例如：Hugo, GitHub, 在线编辑" autocomplete="off">
+                <p class="hint">留空表示无标签</p>
+            </div>
+
+            <div class="form-row checkbox-row">
+                <label class="checkbox-label">
+                    <input id="na-draft" type="checkbox" checked>
+                    <span>保存为草稿（draft: true，不进入生产构建）</span>
+                </label>
+            </div>
+
+            <div class="form-row checkbox-row">
+                <label class="checkbox-label">
+                    <input id="na-math" type="checkbox">
+                    <span>启用数学公式（math: true）</span>
+                </label>
+            </div>
+
+            <div class="form-row">
+                <label for="na-body" class="label">正文（Markdown）</label>
+                <div class="editor-toolbar">
+                    <button type="button" class="editor-tab active" data-editor-tab="edit" id="editor-tab-edit">编辑</button>
+                    <button type="button" class="editor-tab" data-editor-tab="preview" id="editor-tab-preview">预览</button>
+                    <span class="muted small editor-note" id="editor-cdn-status"></span>
+                </div>
+                <div class="editor-split">
+                    <div class="editor-pane" id="editor-pane">
+                        <textarea id="na-body" class="input textarea" rows="14" placeholder="Markdown 内容……&#10;&#10;预览仅供参考。Hugo Shortcode 在 Admin 中以占位形式显示，正式页面由 Hugo 渲染。&#10;&#10;可拖拽图片到此处上传（仅支持 png/jpg/gif/webp，≤5MB）。" spellcheck="false"></textarea>
+                    </div>
+                    <div class="preview-pane" id="preview-pane" aria-live="polite">
+                        <div class="markdown-preview" id="markdown-preview"></div>
+                    </div>
+                </div>
+                <p class="hint">预览说明：用于 Markdown 编写辅助。Hugo Shortcode、部分 Hugo Goldmark 特性、最终页面样式将在 Hugo 构建后确定。</p>
+
+                <!-- Stage 9A: image upload section -->
+                <div class="image-upload-section" id="na-image-section">
+                    <div class="image-upload-toolbar">
+                        <button type="button" class="btn btn-ghost btn-sm" id="na-insert-image-btn">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                            </svg>
+                            插入图片
+                        </button>
+                        <input type="file" id="na-image-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden multiple>
+                        <span class="muted small" id="na-image-hint">支持 png / jpg / gif / webp，≤5MB</span>
+                    </div>
+                    <div class="pending-list" id="na-pending-list" hidden>
+                        <p class="muted small">待上传图片（<span class="pending-count">0</span>）：</p>
+                        <div class="pending-items" id="na-pending-items"></div>
+                    </div>
+                    <p class="hint error" id="na-image-error" hidden></p>
+                </div>
+            </div>
+
+            <div class="banner banner-error" id="na-error-banner" hidden></div>
+
+            <div class="actions">
+                <button type="button" class="btn btn-primary" id="na-save-draft">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    保存草稿
+                </button>
+                <button type="button" class="btn btn-ghost" id="na-publish">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                    发布
+                </button>
+                <button type="button" class="btn btn-ghost" id="na-cancel-2" hidden>取消</button>
+            </div>
+        </section>
+
+        <div class="banner banner-warning" id="tree-truncated-banner" hidden>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            GitHub Tree API 返回的目录树不完整，列表可能缺失部分文章（fallback 暂未启用）。
+        </div>
+
+        <div class="banner banner-error" id="article-error-banner" hidden></div>
+
+        <div class="tree-status muted small" id="tree-status">未加载</div>
+
+        <div class="article-tree" id="article-tree" role="tree" aria-label="文章目录树"></div>
+
+        <div class="article-selected" id="article-selected" hidden>
+            <div class="selected-label muted small">已选择</div>
+            <div class="selected-path" id="article-selected-path"></div>
+            <dl class="info-grid">
+                <dt>SHA</dt>
+                <dd id="article-selected-sha" class="mono"></dd>
+                <dt>大小</dt>
+                <dd id="article-selected-size"></dd>
+                <dt>Bundle</dt>
+                <dd id="article-selected-bundle"></dd>
+            </dl>
+            <div class="actions">
+                <button type="button" class="btn btn-primary btn-sm" id="edit-article-btn">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                    </svg>
+                    编辑
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm" id="back-to-list-btn">
+                    返回列表
+                </button>
+            </div>
+        </div>
+
+        <section class="new-article-form edit-article-form" id="edit-article-form" hidden>
+            <div class="form-header">
+                <h4>编辑文章</h4>
+                <button type="button" class="btn btn-ghost btn-sm" id="edit-cancel-btn" aria-label="取消编辑">取消</button>
+            </div>
+
+            <div class="banner banner-warning" id="edit-load-status" hidden></div>
+
+            <div class="form-row">
+                <label for="ed-title" class="label">标题</label>
+                <input id="ed-title" type="text" class="input" placeholder="标题" maxlength="200" autocomplete="off">
+                <p class="hint" id="ed-title-error"></p>
+            </div>
+
+            <div class="form-row">
+                <label for="ed-date" class="label">日期</label>
+                <input id="ed-date" type="date" class="input" autocomplete="off">
+                <p class="hint" id="ed-date-error"></p>
+            </div>
+
+            <div class="form-row">
+                <label for="ed-categories" class="label">分类</label>
+                <input id="ed-categories" type="text" class="input" placeholder="分类" autocomplete="off">
+                <p class="hint">未编辑则保持原样</p>
+            </div>
+
+            <div class="form-row">
+                <label for="ed-tags" class="label">标签</label>
+                <input id="ed-tags" type="text" class="input" placeholder="标签" autocomplete="off">
+                <p class="hint">未编辑则保持原样</p>
+            </div>
+
+            <div class="form-row checkbox-row">
+                <label class="checkbox-label">
+                    <input id="ed-draft" type="checkbox">
+                    <span>保存为草稿（draft: true，不进入生产构建）</span>
+                </label>
+            </div>
+
+            <div class="form-row checkbox-row">
+                <label class="checkbox-label">
+                    <input id="ed-math" type="checkbox">
+                    <span>启用数学公式（math: true）</span>
+                </label>
+            </div>
+
+            <div class="form-row">
+                <label class="label">正文（Markdown）</label>
+                <div class="editor-toolbar">
+                    <button type="button" class="editor-tab active" data-editor-tab="edit" id="ed-editor-tab-edit">编辑</button>
+                    <button type="button" class="editor-tab" data-editor-tab="preview" id="ed-editor-tab-preview">预览</button>
+                    <span class="muted small editor-note" id="ed-editor-cdn-status"></span>
+                </div>
+                <div class="editor-split" id="ed-editor-split" data-active="edit">
+                    <div class="editor-pane" id="ed-editor-pane">
+                        <textarea id="ed-body" class="input textarea" rows="14" placeholder="正文…&#10;&#10;可拖拽图片到此处上传（仅支持 png/jpg/gif/webp，≤5MB）。" spellcheck="false"></textarea>
+                    </div>
+                    <div class="preview-pane" id="ed-preview-pane" aria-live="polite">
+                        <div class="markdown-preview" id="ed-markdown-preview"></div>
+                    </div>
+                </div>
+                <p class="hint">预览说明：用于 Markdown 编写辅助。Hugo Shortcode、部分 Hugo Goldmark 特性、最终页面样式将在 Hugo 构建后确定。</p>
+
+                <!-- Stage 9A: image upload section -->
+                <div class="image-upload-section" id="ed-image-section">
+                    <div class="image-upload-toolbar">
+                        <button type="button" class="btn btn-ghost btn-sm" id="ed-insert-image-btn">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                            </svg>
+                            插入图片
+                        </button>
+                        <input type="file" id="ed-image-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden multiple>
+                        <span class="muted small" id="ed-image-hint">支持 png / jpg / gif / webp，≤5MB</span>
+                    </div>
+                    <div class="pending-list" id="ed-pending-list" hidden>
+                        <p class="muted small">待上传图片（<span class="pending-count">0</span>）：</p>
+                        <div class="pending-items" id="ed-pending-items"></div>
+                    </div>
+                    <p class="hint error" id="ed-image-error" hidden></p>
+                </div>
+            </div>
+
+            <div class="banner banner-error" id="ed-error-banner" hidden></div>
+            <div class="banner banner-success" id="ed-success-banner" hidden></div>
+
+            <!-- Stage 8: danger zone -->
+            <details class="danger-zone" id="ed-danger-zone">
+                <summary>危险操作</summary>
+                <div class="danger-content">
+                    <p class="muted small">删除后将创建一个 GitHub commit。<br><strong>Admin 不提供回收站。</strong></p>
+                    <div class="actions">
+                        <button type="button" class="btn btn-danger" id="ed-delete-btn">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
+                                <path d="M10 11v6"/><path d="M14 11v6"/>
+                                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                            </svg>
+                            删除这篇文章
+                        </button>
+                    </div>
+                </div>
+            </details>
+
+            <div class="banner banner-warning" id="ed-conflict-banner" hidden>
+                <div>
+                    <strong>远程文章已发生变化。</strong>
+                    <span class="muted small" style="display:block; margin-top: 0.3rem;">你的本地修改没有覆盖远程版本。</span>
+                </div>
+                <div class="actions" style="margin-top: 0.6rem;">
+                    <button type="button" class="btn btn-primary btn-sm" id="ed-conflict-reload-btn">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                        重新加载远程版本
+                    </button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="ed-conflict-keep-btn">
+                        保留当前编辑内容
+                    </button>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="button" class="btn btn-primary" id="ed-save-btn">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    保存修改
+                </button>
+                <button type="button" class="btn btn-ghost" id="ed-cancel-2" hidden>取消</button>
+            </div>
+
+            <!-- Stage 8: delete confirmation modal -->
+            <div class="modal" id="ed-delete-modal" hidden>
+                <div class="modal-backdrop" data-modal-close="1"></div>
+                <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ed-delete-modal-title">
+                    <h3 id="ed-delete-modal-title">删除文章</h3>
+                    <p class="muted small">将删除以下文件：</p>
+                    <ul class="delete-preview" id="ed-delete-preview">
+                        <li class="muted small">加载中…</li>
+                    </ul>
+                    <p class="muted small delete-keep" id="ed-delete-keep" hidden></p>
+
+                    <div class="form-row">
+                        <label for="ed-delete-confirm-input" class="label" id="ed-delete-confirm-label">
+                            请输入完整文章标题确认删除
+                        </label>
+                        <input id="ed-delete-confirm-input" type="text" class="input" autocomplete="off">
+                        <p class="hint" id="ed-delete-confirm-hint"></p>
+                    </div>
+
+                    <div class="banner banner-error" id="ed-delete-error" hidden></div>
+
+                    <div class="actions">
+                        <button type="button" class="btn btn-danger" id="ed-delete-confirm-btn" disabled>
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
+                            </svg>
+                            确认删除
+                        </button>
+                        <button type="button" class="btn btn-ghost" data-modal-close="1">取消</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </section>
+
+    <section class="card info-card">
+        <h3 class="info-title">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            安全提示
+        </h3>
+        <ul class="info-list">
+            <li>
+                <strong>使用 Fine-grained PAT</strong>
+                <span class="muted">而非传统 Token，权限可细化到指定仓库。</span>
+            </li>
+            <li>
+                <strong>仅授权目标仓库</strong>
+                <span class="muted">Repository access 选择 <code>Only select repositories</code>，并选中 <code>Fintinger/hugo-auto-deploy</code>。</span>
+            </li>
+            <li>
+                <strong>仅授予 Contents: Read and write</strong>
+                <span class="muted">不需要 Issues / Pull Requests / Actions / Admin 等其他权限。</span>
+            </li>
+            <li>
+                <strong>设置过期时间</strong>
+                <span class="muted">建议 90 天或更短，过期后重新生成。</span>
+            </li>
+            <li>
+                <strong>Token 永不入库</strong>
+                <span class="muted">本 Admin 仅在浏览器 sessionStorage 保存，不会写回 GitHub 仓库。</span>
+            </li>
+        </ul>
+        <p class="info-foot muted small">
+            GitHub Token 创建：
+            <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener noreferrer">github.com/settings/tokens</a>
+        </p>
+    </section>
+
+</main>
+
+<footer class="footer">
+    <p>Archai Blog Admin · V1 · 静态部署于 Vercel · 通过 GitHub API 操作</p>
+</footer>
+
+<script src="./js/utils.js"></script>
+<script src="./js/github-api.js"></script>
+<script src="./js/article.js"></script>
+<script src="./js/frontmatter.js"></script>
+<script src="./js/markdown.js"></script>
+<script src="./js/image.js"></script>
+<script src="./js/app.js"></script>
+</body>
+</html>

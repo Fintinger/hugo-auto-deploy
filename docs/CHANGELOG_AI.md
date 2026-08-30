@@ -955,3 +955,484 @@ Extra 页面从「早期个人项目展示页」升级为「简洁、现代、�
 - 浏览器测试：当前 OpenCode 环境未验证（无 Browser/Playwright 能力），需用户手动确认
 
 ---
+
+
+
+
+---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 5B — 文件名支持（同一天多 Markdown）：
+
+1. **filename 字段**：新建文章表单新增「文件名」输入，默认 `index.md`
+2. **路径生成升级**：`buildArticlePath(date, filename)` 接受 filename 参数，输出 `content/posts/YYYY/MM/DD/<filename>`
+3. **自动补 .md 扩展名**：用户输入 `network` 自动变 `network.md`
+4. **文件名校验 `validateArticleFilename`**：拒绝路径分隔符、`..`、控制字符、保留非法字符、长度限制 80
+5. **同目录多 Markdown 支持**：现在可创建 `Sort.md` + `externalSort.md`（Hugo 已有此模式）
+6. **冲突检测升级**：基于完整 path（不再是日期目录）
+7. **path 不允许修改**：编辑已有文章 path 固定，不实现 rename/move
+
+### 修改文件
+
+- `static/admin/js/article.js`（新增 `validateArticleFilename`，`buildArticlePath` 接受 filename）
+- `static/admin/index.html`（新建表单添加 `na-filename` 字段）
+- `static/admin/css/admin.css`（无新增样式，复用现有）
+- `static/admin/js/app.js`（`collectFormData` 包含 filename，`submitNewArticle` 校验 filename）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+用户报告：阶段 5 限制「同一天只能一篇文章」（强制 `index.md`）不符合项目历史结构。Hugo 已支持 `Sort.md` + `externalSort.md` 等同目录多 Markdown 模式。放开限制但保持谨慎：filename 默认仍是 `index.md`，仅当用户主动改才使用其他名字。
+
+### 测试结果
+
+- Node 单元测试：`validateArticleFilename` 全部用例通过
+- Path 边界：通过 `/test-7b.js` 类型测试覆盖
+
+### 注意事项
+
+- 未触动 Stage 5 的 Contents API createFile 流程
+- `filename = 'index.md'` 时仍按 Page Bundle 处理（约定）
+- path 修改不在本阶段范围
+
+---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 6 — Markdown 编辑器与实时预览：
+
+1. **CDN 依赖引入**：marked@12.0.2、highlight.js@11.9.0、KaTeX@0.16.11（jsdelivr，固定版本，crossorigin=anonymous）
+2. **CSP meta**：default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https:; font-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://api.github.com
+3. **编辑器 UI**：textarea + 实时预览（双栏 50/50，移动端 Tab 切换 [编辑] [预览]）
+4. **`<textarea>` 作为唯一 source of truth**：原始 Markdown 字符不被任何解析破坏
+5. **Pipeline**：raw → shortcode 标记替换 → math 标记替换 → marked.parse → restoreMarkers → sanitizer → DOM
+6. **Hugo shortcode 占位**：识别 `{{< name args >}}` / `{{% ... %}}` / 自闭合 / 成对，渲染为 `<aside class="adm-shortcode">` 安全卡片
+7. **Math 公式**：识别 `$`...`$` / `$$...$$`；调用 `katex.renderToString({ trust:false, throwOnError:true, strict:'function' })`；解析失败降级为源码
+8. **Code highlight**：`hljs.highlightElement(codeEl)` 单次失败不影响其他
+9. **DOMParser 自定义 sanitizer**：allowlist 标签 + 属性 + URL 协议检查（拒绝 javascript: vbscript: data:，允许 https: mailto: tel: # /）
+10. **Code fences + 原始 HTML 保留**：`\`code\` 内容直接高亮，`<div>x</div>` 原样输出
+11. **CDN 失败降级**：每个组件单独检测，缺失时显示降级提示，textarea 编辑器仍可用
+12. **dirty / beforeunload**：编辑器变更时 dirty=true，关闭前提示
+
+### 修改文件
+
+- `static/admin/index.html`（新增 editor toolbar / split / preview pane，新增 CSP meta，引入 CDN）
+- `static/admin/css/admin.css`（新增 `.editor-toolbar` / `.editor-split` / `.preview-pane` / `.markdown-preview` 等）
+- `static/admin/js/markdown.js`（新增：预处理器、shortcode 占位、KaTeX 渲染、自定义 sanitizer）
+- `static/admin/js/app.js`（`wireMarkdownEditor`、`renderPreview`、`renderEditPreview` 等）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+新建/编辑文章需要 Markdown 实时预览，但 Hugo 完整渲染无法在浏览器内完成。Admin 提供本地预览作为辅助工具，同时 Hugo Shortcode、math、原始 HTML 必须原样保留到 GitHub。
+
+### 测试结果
+
+- 真实 GitHub 测试需用户操作
+- Sandbox 测试在 Node 中因无真实 DOM 解析而受限
+- Hugo build：BUILD_OK
+
+### 注意事项
+
+- 引入 3 个第三方 CDN；SRI hash 暂未配置（待 Stage 11 评估）
+- unsafe-inline 用于 SVG inline style
+- KaTeX trust:false（V1 阶段 6 不允许用户原始 HTML 数学）
+- 短代码占位未来可由 Hugo 实际渲染
+
+---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 7 — 编辑已有文章：
+
+1. **Article Editor 数据模型**：`<path, originalSha, originalRaw, originalFrontMatterRaw, originalBody, frontMatter, body, hasFrontMatter, isLoading, isSaving, isDirty, latestRaw, latestSha>`
+2. **loadArticleForEdit(path)**：`API.getFile()` → 重新 parse FM → 填充表单 → 缓存 `originalRaw / originalSha`
+3. **reloadEditFromLatest(file)**：冲突后从远程重新加载，重置 baseline
+4. **Front Matter 整体序列化**（新建）：`generateFrontMatter(formData)` 模板驱动，仅新建时使用
+5. **编辑保存流程**（Stage 7B/7C 后）：`getFile → baseline check → patch → updateFile`
+6. **Path 不可修改**：编辑模式下 path 固定，不实现 rename/move
+7. **commit message**：`post: {sanitized-title}` 或 `post: draft {title}`
+8. **`<textarea>` 编辑 body**：原始 Markdown 字符保留，body 不解析
+9. **dirty 状态**：input/change 事件触发 markDirty()
+10. **保存前 finalRaw 一致性检查**：`finalRaw === originalRaw` → 提示「没有检测到修改」
+
+### 修改文件
+
+- `static/admin/js/app.js`（`loadArticleForEdit` / `saveEdit` / `reloadEditFromLatest` / wireEditForm）
+- `static/admin/index.html`（编辑表单 UI，含 danger zone 预留位置）
+- `static/admin/css/admin.css`（编辑表单样式）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+阶段 5 新建文章完成后，用户需要能修改已有文章。这是 CMS 的基本能力。Stage 7 设计上最大风险是改动 originalRaw 字符。实现要点：原始 raw 全文保存为 baseline，仅字段级 patch FM，body 字符不动。
+
+### 测试结果
+
+- 浏览器真实 GitHub 测试由用户操作
+- Hugo build：BUILD_OK
+- 不修改历史 content 测试时仅 touch 临时测试文章
+
+### 注意事项
+
+- 不实现删除（Stage 8）
+- 不实现图片上传（Stage 9A/9B）
+- 不修改已有 content 测试文章
+- `revalidate finalRaw === originalRaw` 是 dry-run 保护
+
+---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 7B — 编辑并发安全与 Front Matter Patch 回归修复：
+
+1. **核心 Bug 修复**：`saveEdit` 成功后 `originalRaw = result.content || ''`（**B U G**），因为 updateFile 不返回 content
+   - 修复：`originalRaw = finalRaw`（使用刚写入的内容作为新 baseline）
+2. **空 FM wrapper 修复**：原条件 `hasFrontMatter || changes.length > 0` 在删除全部字段时输出 `---\n---\n`
+   - 修复：仅 `patchedFm.trim() !== ''` 时包 wrapper；else 分支用 `originalBody` 而非 `originalRaw`
+3. **Front Matter Patch 边界测试**（41/41 通过）：
+   - Block sequence / Indented sequence / Inline sequence
+   - Multiline / Folded string（`summary: |` / `summary: >`）
+   - 相邻字段保护（`tags` 删除不影响 `summary` / `cover`）
+   - 未知字段保留（`author` / `customField` 等）
+   - 嵌套对象保留（`cover.image: a.jpg`）
+   - CRLF / LF 保持
+   - `---` / 正文之间无粘连
+
+### 修改文件
+
+- `static/admin/js/frontmatter.js`（`patch` 修复边界处理）
+- `static/admin/js/app.js`（`saveEdit` baseline 修正 + 移除空 FM wrapper）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+阶段 7 实现后审计发现两个高严重度 bug：
+1. 第二次保存时空 baseline 误判 conflict（修复 B）
+2. 删全部字段时输出空 FM wrapper（修复 C）
+
+### 测试结果
+
+- 单元测试：边界 41/41 通过
+- 集成测试：saveEdit 流程修正后语义正确
+- Hugo build：BUILD_OK
+
+### 注意事项
+
+- 旧文章含异常 YAML 格式：未知字段保留，但 parse 失败时可能丢失数据
+- 删除 array 字段后：Hugo 视为 null，下次保存会变 `[]`
+
+---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 7C — 编辑状态基线一致性回归：
+
+1. **`<textarea>` 状态 baseline 验证**：`latestRaw === originalRaw` 失败 → CONFLICT UI
+2. **空 FM wrapper 消除**：`patchedFm.trim() === ''` 时不包 wrapper，仅输出 body
+3. **空 body 路径走 `originalBody` 而非 `originalRaw`**：避免 FM 残留
+4. **空 stage 7 finalRaw 赋值错误**：`result.content` 是 undefined → 修复为 `finalRaw`
+5. **保存后重新刷新缓存**：`reloadEditFromLatest(reloaded)` 同步到 GitHub 实际
+6. **冲突 UI 不修改 `originalRaw`**：保留用户编辑，再次保存仍触发 conflict
+7. **「重新加载远程版本」**：`reloadFromRemote()` 用 `state.edit.latestRaw/latestSha` 重置 baseline
+8. **「保留当前编辑内容」**：`keepLocalEdits()` 保持 dirty + 警告
+
+### 修改文件
+
+- `static/admin/js/app.js`（修正 `saveEdit` baseline 逻辑、空 wrapper 处理、reload / keep 回调）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+阶段 7B 修复后仍存在细节问题：空 FM wrapper、空 body 走错路径。逐一修复。
+
+### 测试结果
+
+- 19/19 单元测试通过（patch 边界 + composition 边界）
+- 浏览器测试：用户操作
+
+### 注意事项
+
+- `finalRaw` 在保存成功时**总是**用本地副本（GitHub 实际可能略有差异如 CRLF）
+- 冲突保留本地后，下次保存仍可能继续冲突（直到 reload）
+- 状态机：clean / dirty / saving
+
+---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 8 — 删除文章（破坏性写操作）：
+
+1. **`<details class="danger-zone">` 在编辑表单下方**：折叠显示「删除文章」按钮
+2. **二次确认弹窗**：显示将被删除文件列表 + 同目录保留文件列表
+3. **删除前重新读取 remote tree**：`API.listContents(dir)` 验证文件仍存在
+4. **共享资源不删**：仅删除 article path + 其 `index.assets/`（如果 isBundle）
+5. **同目录其他 .md 保留**：`externalSort.md` 等不被删
+6. **标题严格匹配**：trim 后精确匹配 frontMatter.title（无大小写宽松 / contains / startsWith）
+7. **无 title fallback**：输入完整文件名
+8. **Git Data API 删除**：一次 commit 删除多个文件，`force:false`
+9. **并发保护**：422 CONFLICT → 拒绝覆盖，显示 reload / keep
+10. **commit message**：`post: delete {sanitized-title}`
+11. **失败可重试**：pending queue 保留，user 可重新加载
+12. **删除后 loadArticles()**：从 GitHub 拉取最新 tree
+
+### 修改文件
+
+- `static/admin/js/github-api.js`（新增 `deleteArticle(token, {paths, message})` 使用 Git Data API）
+- `static/admin/js/app.js`（`openDeleteModal` / `executeDelete` / `reloadFromRemote` 等）
+- `static/admin/index.html`（danger-zone + delete modal）
+- `static/admin/css/admin.css`（danger-zone + modal 样式）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+阶段 5 新建 + 阶段 7 编辑完成后，需要删除能力完成 CMS 基本闭环。删除是高破坏性操作，多重防误：UI 隔离、二次确认、远程校验、并发保护、单 commit 原子性。
+
+### 测试结果
+
+- 真实 GitHub 测试由用户操作
+- 17/17 单元测试通过（escapeHtml、删除文件集计算、CAS、严格匹配）
+- Hugo build：BUILD_OK
+
+### 注意事项
+
+- 删除仅支持 Stage 8 当前能力，不实现 recycle bin / restore / undo
+- 共享资源不自动删（用户手动）
+- 失败保留 pending，可重试
+
+---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 9A — 图片上传基础（本地待上传队列，不上传 GitHub）：
+
+1. **`ImageUpload` 模块**（`static/admin/js/image.js`）：`validateImage` / `sanitizeFilename` / `generateUniqueName` / `computeTargetPath` / `buildMarkdown` / `insertAtCursor`
+2. **格式支持**：`png` / `jpg` / `jpeg` / `gif` / `webp`；**拒绝 SVG**（XSS 风险）
+3. **大小限制**：单图 ≤ 5 MB
+4. **中文文件名支持**：`sanitizeFilename` 保留中文 / 数字 / `-` / `_` / `.` / 空格
+5. **路径遍历阻止**：去除 `/`、`\`、`..`、控制字符、Windows 保留字符
+6. **重名去重**：`name-1.ext` / `name-2.ext` 模式，队列内不重复
+7. **`state.pendingUploads` 队列**：包含 id, file, originalName, safeName, type, size, previewUrl, status, targetPath, formMode
+8. **预览用 `URL.createObjectURL`**：```blob:...```
+9. **拖放支持**：`dragenter` / `dragover` / `drop` 事件 + drop-target 高亮
+10. **插入光标位置**：`insertAtCursor` 在 textarea 当前光标插入 Markdown，保留 selection
+11. **Page Bundle 限制**：仅 `isBundle === true`（编辑模式）或 `filename === 'index.md'`（新建模式）允许上传
+12. **Markdown 预览集成**：`<img src="blob:..." data-pending="1">`，替换 `index.assets/X` 占位符
+13. **`URL.revokeObjectURL` 内存管理**：移除、关闭表单、提交成功时清理
+14. **`beforeunload` 守卫**：dirty 或 pending 非空时提示
+
+### 修改文件
+
+- `static/admin/js/image.js`（新增：验证 / 清理 / 重名 / 路径 / Markdown / 光标）
+- `static/admin/index.html`（两表单均新增 image upload section + file input + pending list）
+- `static/admin/css/admin.css`（`pending-items` / 拖放高亮等）
+- `static/admin/js/app.js`（`addPendingUpload` / `removePendingUpload` / `renderPendingList` / `handleImageFiles` / `resetPendingFor*` / drop 绑定）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+图片上传是 Stage 9B 的前置条件。本阶段仅建立本地队列，**不**调用 GitHub API，为 Stage 9B 的 atomic commit 做准备。
+
+### 测试结果
+
+- 45/45 单元测试通过（validateImage / sanitizeFilename / generateUniqueName / computeTargetPath / buildMarkdown / insertAtCursor）
+- 浏览器测试：用户操作
+
+### 注意事项
+
+- 不向 GitHub 发送任何内容
+- 关闭页面 = pending 队列丢失（设计如此）
+- 不实现图片清理工具
+
+---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 9B — 图片上传与文章原子提交：
+
+1. **`createBlob(token, content, encoding)`**：POST /git/blobs（utf-8 / base64）
+2. **`fileToBase64(file)`**：用 `FileReader.readAsDataURL` 避免 `String.fromCharCode.apply` 调用栈溢出
+3. **`commitChanges(token, opts)`**：完整多文件原子提交
+   - GET commit → baseTreeSha
+   - GET tree (recursive)
+   - Promise.all blob 创建
+   - POST trees { base_tree, tree: [...] }
+   - POST commits { message, tree, parents: [baseCommitSha] }
+   - PATCH refs/heads/main { sha, force:false }
+4. **`<img src=blobURL>`** 通过 Stage 9A 的 preview 路径自然支持
+5. **`resolveFinalPendingNames`**：避免与 remote + 队列内冲突，自动 `name-1.ext` 编号
+6. **`updateBodyReferencesForFinalNames`**：rename 时同步更新 body 引用，保留用户 alt 文本
+7. **`saveEditWithImages`**：edit 模式 + 图片，原子 commit
+8. **`submitNewArticleWithImages`**：new 模式 + 图片，原子 commit
+9. **dispatch 逻辑**：`state.pendingUploads.length > 0` → commitChanges；否则原 Contents API
+10. **`force:false` 严格不变**：并发 commit 返回 422 → CONFLICT UI
+11. **总图片 ≤ 20MB**：超出拒绝保存
+12. **content 一致性**：`checkPendingReferences` 验证每个 pending 在 body 中有引用
+13. **失败保留 pending**：用户可重试，不丢失图片队列
+14. **API 权限复用 Contents: write**（无需新权限）
+
+### 修改文件
+
+- `static/admin/js/github-api.js`（`createBlob` / `fileToBase64` / `commitChanges`）
+- `static/admin/js/app.js`（`saveEditWithImages` / `submitNewArticleWithImages` / resolve / update helpers）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+防止图片孤儿、多次 commit、文章保存失败但图片已上传等问题。Git Data API 单 commit 原子性保证。
+
+### 测试结果
+
+- 8/8 单元测试通过
+- 真实 GitHub 测试由用户操作（7 个场景）
+- Hugo build：BUILD_OK
+
+### 注意事项
+
+- 中文路径：GitHub API URL 编码由 github-api.js 内部处理
+- rename 时 alt 文本保留（用户意图优先）
+- 不自动删除孤儿图片
+- 不实现 recycle / undo
+
+---
+
+## 2026-08-29
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 10 — Admin 安全加固：
+
+1. **PAT 最小权限确认**：`Contents: Read and write`（仅目标仓库）覆盖所有现有 API
+2. **Token 仅 sessionStorage**：`admin.github.token` 唯一存储位置
+3. **localStorage 审计**：`admin-theme` / `pref-theme`（仅主题，无 Token）
+4. **`handleApiError(err)`** 集中处理：401/403（非 rate limit）自动清除 Token + 重置连接
+5. **注入 8 处 catch handler**：所有 API 错误统一通过 handleApiError
+6. **Sanitizer 加强：禁止所有 `data:` URL**（移除 svg+xml allowlist）
+7. **CSP 升级**：`default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' blob: https:; font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self' https://api.github.com; frame-ancestors 'none'; base-uri 'self'; form-action 'none'; object-src 'none'`
+8. **Security headers via meta**：`X-Content-Type-Options: nosniff` / `Referrer-Policy: no-referrer` / `X-Frame-Options: DENY`
+9. **`<input type="password">` + `autocomplete="off"` 强化 Token 字段**
+10. **外链 `target="_blank" rel="noopener noreferrer"`**
+11. **innerHTML 审计**：21 处使用全部经 sanitizer 或硬编码
+12. **console.* 审计**：0 处 console.log / error / debug / info / warn
+13. **CDN 版本固定**：12.0.2 / 11.9.0 / 0.16.11（无 `@latest`）
+14. **force:true 审计**：代码内仅注释 "We NEVER use force:true"
+15. **Path 遍历阻止**：`targetPath` 仅由 `computeTargetPath` 构造
+
+### 修改文件
+
+- `static/admin/index.html`（CSP meta 升级 + Security headers meta）
+- `static/admin/js/markdown.js`（sanitizer 禁止 data: URL）
+- `static/admin/js/app.js`（handleApiError + 8 处注入）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+在 V1 功能完整后系统收紧安全边界，避免引入新功能的同时忽略累积风险。
+
+### 测试结果
+
+- Hugo build：BUILD_OK
+- Sandbox XSS 测试受 mock 限制（实际 sanitizer 已逐行人工审计）
+- 真实浏览器 XSS 验证需用户操作
+
+### 注意事项
+
+- **未**创建 Vercel `_headers` 文件（HTTP-level headers 仍依赖浏览器 meta fallback）
+- **未**配置 CDN SRI integrity（需用户用 curl 计算）
+- **未**做 CSP HTTP-level 验证
+- Admin 页面无 page-level 认证（设计如此：依赖 Fine-grained PAT 在 API 层鉴权）
+- XSS 沙箱测试受 mock 限制，待用户在真实浏览器验证
+
+---
+
+
+---
+
+## 2026-08-30
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 13 — 项目收官、文档同步与最终 V1 Checkpoint：
+
+1. **`AGENTS.md` 创建**（项目根目录此前缺失）：写入完整 Admin 红线 + 必须项 + Git 提交规范
+2. **`docs/PROJECT_CONTEXT.md` 同步**：追加"Admin CMS V1 架构"小节
+   - Admin 目录结构（`static/admin/` + 7 个 JS 模块）
+   - 数据流（浏览器 → GitHub API → main → Vercel → blog）
+   - 多文件原子提交流程（resolveFinalPendingNames → updateBodyReferencesForFinalNames → commitChanges）
+   - 并发安全模型（`force:false` + content baseline 双层保护）
+   - 各模块职责表（utils / github-api / article / frontmatter / markdown / image / app）
+3. **`docs/PROJECT_CONTEXT.md` 已知问题更新**：Valine 已改 Waline；中文文件名 Stage 5B 已修；新增"Admin 无 page-level 认证"
+4. **`tools/admin-static-check.js` 新增**：纯 Node 无依赖静态检查
+   - JS 源码（无 console / eval / new Function / document.write / force:true）
+   - Token / auth 卫生（无真实 github_pat_、ghp_、Bearer）
+   - CDN / SRI（无 @latest / @next；每个 CDN 资源都有 integrity + crossorigin；SRI 用标准 Base64）
+   - vercel.json（valid JSON + 有 /admin 和 /admin/(.*) 两条规则）
+   - JS 语法（全部 `node --check` 通过）
+   - Hugo build
+   - localStorage hygiene（无 token）
+5. **`docs/CHANGELOG_AI.md` 同步**：追加阶段 13 条目（本条目）
+
+### 修改文件
+
+- `AGENTS.md`（新增）
+- `docs/PROJECT_CONTEXT.md`（追加 Admin 架构 + 更新已知问题）
+- `tools/admin-static-check.js`（新增）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+V1 已收官，需要把所有分散在多次会话中的架构/安全/数据完整性决策正式落到项目文档与最小检查工具，便于未来维护者（人或 AI）快速理解当前真实架构。
+
+### 测试结果
+
+- `node tools/admin-static-check.js`：**全部通过（0 失败）**
+  - 7 个 JS 文件无 console / eval / new Function / document.write / force:true
+  - 4 个 CDN 资源都有 integrity + crossorigin，SRI 标准 Base64
+  - `vercel.json` valid JSON + /admin 双规则
+  - Hugo BUILD_OK（257 pages）
+  - `node --check` 全部 JS 文件通过
+
+### 注意事项
+
+- **AI 已验证**：文档、static check、Hugo build
+- **用户应验证**：生产 `curl -I` 检查 HTTP Headers、真实 PAT 登录、所有 CRUD 流程、并发冲突、删除、图片上传、Markdown Preview
+- **V1 进入 MAINTENANCE MODE**：除非用户明确提出新需求，不主动扩展
+
+---

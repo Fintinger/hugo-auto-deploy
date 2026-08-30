@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md
 
 > 本项目长期知识库。任何 AI 模型首次接手本仓库时，请先完整阅读本文件。
-> 最后更新：2026-08-27（升级 AI 协作文档体系：新增 DEVELOPMENT_WORKFLOW.md）
+> 最后更新：2026-08-30（V1 收官：补 Admin CMS 架构 + 已知问题更新）
 
 ---
 
@@ -14,7 +14,7 @@
 - 内容语言：中文（`zh-cn`，`DefaultContentLanguage: zh-cn`）
 - 作者：Archai（GitHub 账号 `Fintinger`）
 
-**重要**：本项目是「静态博客」，**不是** Vue/React SPA。没有 `package.json`、`src/`、`components/`、`router/`、`store/`、`api/`、后端服务或数据库。前端交互全部通过 Hugo 模板 + 原生 JS + 少量 CDN 引入的第三方库实现。
+**重要**：本项目是「静态博客 + 静态 Admin SPA」，**不是** Vue/React SPA。**没有** `package.json`、`src/`、`components/`、`router/`、`store/`、`api/`、后端服务或数据库。
 
 ---
 
@@ -234,10 +234,99 @@ Vercel 自动部署 → https://blog.archai.space
 2. **主题层**：`themes/PaperMod/`（布局、样式、脚本）。
 3. **静态资源层**：`static/`。
 4. **配置层**：`config.yml`。
+5. **Admin 层**：`static/admin/`（V1 已收官，详见下方）。
 
----
+### Admin CMS V1 架构（`static/admin/`）
 
-## 开发流程
+`/admin/` 是一个**纯静态 SPA**（无后端、无 npm、无构建），使用：
+- 原生 HTML + CSS + JS
+- Fine-grained PAT 鉴权（仅 `Fintinger/hugo-auto-deploy` + `Contents: Read and write`）
+- Token 存于 `sessionStorage`，关闭标签自动失效
+- GitHub REST API（Contents API + Git Data API）
+
+**目录结构**：
+
+```
+static/admin/
+├── index.html       # 单页 Admin
+├── css/admin.css     # 独立样式（不污染博客）
+└── js/
+    ├── utils.js         # sessionStorage 封装 / 通用工具
+    ├── github-api.js     # GitHub REST API（含 Git Data API 多文件 commit）
+    ├── article.js        # 文章树解析（Article 数据模型）
+    ├── frontmatter.js    # Front Matter 解析 + 字段级 patch
+    ├── markdown.js       # Markdown 渲染 + shortcode/math placeholder + XSS sanitizer
+    ├── image.js          # 图片本地校验 / sanitize / 队列
+    └── app.js            # 状态机 + UI 接线（new / edit / delete / image）
+```
+
+**数据流**：
+
+```
+浏览器 /admin/
+  ↓ fetch + PAT
+GitHub REST API (Contents API / Git Data API)
+  ↓
+Fintinger/hugo-auto-deploy 仓库 main 分支
+  ↓
+Vercel 自动构建
+  ↓
+blog.archai.space
+```
+
+**新建 / 编辑流程**：
+
+```
+UI 表单 → collectEditChanges
+  ↓
+API.getFile(path) → latestRaw / latestSha
+  ↓
+latestRaw === originalRaw ? 否则 CONFLICT UI
+  ↓
+FrontMatter.patch + body 拼接
+  ↓
+API.updateFile 或 commitChanges
+  ↓
+main 分支推进
+  ↓
+Vercel build → blog 更新
+```
+
+**多文件原子提交（图片 + 文章）**：
+
+```
+Stage 9A pendingUploads 队列
+  ↓
+Stage 9B 最终保存
+  ↓
+resolveFinalPendingNames (避免 remote + 队列内冲突)
+  ↓
+updateBodyReferencesForFinalNames (同步 Markdown)
+  ↓
+Git Data API:
+   createBlob × N
+   ↓
+   createTree (base_tree + entries)
+   ↓
+   createCommit (message, tree, parents)
+   ↓
+   PATCH refs/heads/main { sha, force: false }
+```
+
+并发安全：`force: false` → 非 fast-forward 返回 422 → CONFLICT UI，绝不覆盖。
+
+### Admin 模块职责
+
+| 模块 | 职责 | 不应该做什么 |
+|------|------|-------------|
+| `utils.js` | sessionStorage 封装、theme 切换、formatBytes | 业务逻辑 |
+| `github-api.js` | Contents API、Git Data API 多文件 commit、deleteArticle、错误分类 AdminError | DOM 操作、UI 渲染 |
+| `article.js` | parseTree / buildDirectoryTree / generateUniqueName / validateArticleFilename / sanitizeTitleForCommit / buildArticlePath / generateFrontMatter | 网络调用 |
+| `frontmatter.js` | parseFrontMatter (识别 BOM/CRLF) / extractFields / patchFrontMatter (字段级) | 网络调用、生成整篇文章 |
+| `markdown.js` | shortcode/math 预处理 + marked + sanitize (DOMParser allowlist) + KaTeX + highlight | 网络调用 |
+| `image.js` | validateImage / sanitizeFilename / generateUniqueName / computeTargetPath / buildMarkdown / insertAtCursor | 网络调用、DOM 操作 |
+| `app.js` | 状态机（new / edit / delete / image）+ UI 接线 | GitHub API 实现细节（封装在 github-api.js）|
+
 
 本项目采用 **AI 辅助长期维护模式**：文档驱动协作。AI 每次改动前先阅读协作文档理解上下文，改动后记录日志、输出 Git 提交建议并等待用户确认，最后由用户决定是否提交。
 
@@ -257,14 +346,14 @@ Vercel 自动部署 → https://blog.archai.space
 
 ## 已知问题
 
-1. **Valine 密钥硬编码**：`appId/appKey/master` 明文写在公开仓库 `comments.html`，存在安全隐患。
+1. **Valine 密钥硬编码**：`appId/appKey/master` 明文写在公开仓库 `comments.html`，存在安全隐患。Stage 10 改用 Waline 替代。
 2. **`window.onerror` 吞错**：`footer.html` 末尾 `window.onerror=function(){return true;}` 会屏蔽所有 JS 报错，调试极难。
-3. **JS 隐式跨文件依赖**：`style.js` 依赖 `mobile.js` 声明的全局变量（`main`/`body`/`isMobile` 等）。拼接顺序由文件名排序决定（`getSetResource` < `mobile` < `randomLine` < `style`），一旦改名或重排即破坏功能。
+3. **JS 隐式跨文件依赖（博客主题）**：`style.js` 依赖 `mobile.js` 声明的全局变量（`main`/`body`/`isMobile` 等）。拼接顺序由文件名排序决定（`getSetResource` < `mobile` < `randomLine` < `style`），一旦改名或重排即破坏功能。
 4. **首页隐藏滚动条**：`style.js` 在 profileMode 下设置 `documentElement.style.overflowY='hidden'`，内容超出时用户可能无法滚动。
-5. **文件名含中文**：`content/posts/2026/08/26/FRP+Guacamole远程桌面访问方案记录.md`（及部分 `.assets` 中文图片名），在非 UTF-8 环境或某些 CI 上可能出问题（本机 `hugo` 构建通过）。
-6. **`extra/index.html` 脱离主题**：独立 HTML + CDN 引入 Vue2/Tailwind，不受 Hugo 模板管理，维护成本高，且依赖外部 CDN 可用性。
-7. **`randomLine.js` 整段注释**：死代码残留。
-8. **图片体积大**：`poster1.png`（约 3.8MB）、`head.gif`（486KB）、`bg.mp4`（2.6MB）直接放静态目录，影响首屏。
+5. **文件名含中文**：`content/posts/2026/08/26/FRP+Guacamole远程桌面访问方案记录.md`（及部分 `.assets` 中文图片名），在非 UTF-8 环境或某些 CI 上可能出问题（本机 `hugo` 构建通过）。Stage 5B 修正为 `index.md`。
+6. **`extra/index.html` 脱离主题**：独立 HTML + CDN 引入 Vue2/Tailwind，不受 Hugo 模板管理，维护成本高，且依赖外部 CDN 可用性。Stage 1.5 重设计。
+7. **图片体积大**：`bg.webm`（1.08MB）仍较大；首屏可能受 CDN 速度影响。
+8. **Admin 无 page-level 认证**：依赖 Fine-grained PAT 在 API 层鉴权；任意 URL 均可访问 `/admin/`，但无 PAT 不可操作。V2 考虑 Cloudflare Access。
 
 ---
 
