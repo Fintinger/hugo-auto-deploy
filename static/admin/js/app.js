@@ -769,7 +769,7 @@
 
         API.getFile(state.token, path).then(function (file) {
             var parsed = window.FrontMatter.parse(file.content);
-            var fields = window.FrontMatter.extractFields(file.frontMatterRaw);
+            var fields = window.FrontMatter.extractFields(parsed.frontMatterRaw);
 
             state.edit.originalSha = file.sha;
             state.edit.originalRaw = file.content;
@@ -812,7 +812,7 @@
     function reloadEditFromLatest(file) {
         if (!state.edit || !file) return;
         var parsed = window.FrontMatter.parse(file.content);
-        var fields = window.FrontMatter.extractFields(file.frontMatterRaw);
+        var fields = window.FrontMatter.extractFields(parsed.frontMatterRaw);
 
         state.edit.originalSha = file.sha;
         state.edit.originalRaw = file.content;
@@ -1230,13 +1230,13 @@ function updateEditCdnStatus() {
             var hintText;
             if (titleFm) {
                 confirmString = titleFm;
-                hintText = '请完整输入文章标题（含标点、空格不敏感前后空白）';
+                hintText = '完整输入以下文字（含标点、空格不敏感前后空白）';
                 if (els.edDeleteConfirmLabel) {
                     els.edDeleteConfirmLabel.textContent = '请输入完整文章标题确认删除';
                 }
             } else {
                 confirmString = fileName;
-                hintText = '文章无 front matter title，请输入完整文件名确认删除';
+                hintText = '文章无 front matter title，请输入完整文件名';
                 if (els.edDeleteConfirmLabel) {
                     els.edDeleteConfirmLabel.textContent = '请输入完整文件名确认删除';
                 }
@@ -1248,7 +1248,11 @@ function updateEditCdnStatus() {
                 title: titleFm,
                 fileName: fileName
             };
-            if (els.edDeleteConfirmHint) els.edDeleteConfirmHint.textContent = hintText;
+            // Show what the user must type in the input placeholder and hint.
+            if (els.edDeleteConfirmInput) els.edDeleteConfirmInput.placeholder = confirmString;
+            if (els.edDeleteConfirmHint) {
+                els.edDeleteConfirmHint.textContent = hintText + '：<code>' + escapeHtml(confirmString) + '</code>';
+            }
         }).catch(function (err) {
             handleApiError(err);
             if (els.edDeleteError) {
@@ -1333,7 +1337,22 @@ function updateEditCdnStatus() {
         }
         if (els.backToListBtn) {
             els.backToListBtn.addEventListener('click', function () {
-                if (state.edit) hideEditForm();
+                // Go back to article list: clear selected article state and
+                // hide the article-selected / edit-form sections.
+                if (state.edit && state.edit.isDirty && !window.confirm('当前编辑内容尚未保存，确定离开吗？')) {
+                    return;
+                }
+                if (state.edit) {
+                    URL.revokeObjectURL(state.edit.previewUrl);
+                    state.edit = null;
+                }
+                state.selectedArticle = null;
+                if (els.articleSelected) els.articleSelected.hidden = true;
+                if (els.editForm) els.editForm.hidden = true;
+                if (els.edErrorBanner) els.edErrorBanner.hidden = true;
+                if (els.edSuccessBanner) els.edSuccessBanner.hidden = true;
+                if (els.edLoadStatus) els.edLoadStatus.hidden = true;
+                if (els.edConflictBanner) els.edConflictBanner.hidden = true;
             });
         }
         var cancelHandlers = [els.edCancel, els.edCancel2];
