@@ -30,31 +30,52 @@
     }
 
     /**
-     * Parse a posts path into year / month / day / filename / directory.
+     * Parse a posts path into year / month / day / filename / directory / slug.
+     * Supports both old and new article layouts:
+     *
+     *   Old (no slug subdir):  content/posts/YYYY/MM/DD/index.md   (4 segments after prefix)
+     *   New (slug leaf bundle): content/posts/YYYY/MM/DD/<slug>/index.md  (5 segments after prefix)
+     *
      * Returns null if path is not a well-formed posts path.
+     * `slug` is null for the old layout, set to the subdir name for the new layout.
+     * `directory` is the directory containing the .md file (i.e. the slug
+     * directory for new layout, or the date directory for old layout).
      */
     function parsePath(path) {
-        var rest = path.substring(POSTS_PREFIX.length); // e.g. "2026/08/26/index.md"
+        var rest = path.substring(POSTS_PREFIX.length); // "2026/08/26/index.md" or "2026/08/26/foo/index.md"
         var parts = rest.split('/');
         if (parts.length < 4) return null;
 
         var year = parts[0];
         var month = parts[1];
         var day = parts[2];
-        var filename = parts.slice(3).join('/');
 
         // Loose validation: year/month/day are 4 / 2 / 2 digit strings.
         if (!/^\d{4}$/.test(year)) return null;
         if (!/^\d{2}$/.test(month)) return null;
         if (!/^\d{2}$/.test(day)) return null;
 
-        var lastSlash = path.lastIndexOf('/');
-        var directory = path.substring(0, lastSlash + 1); // "content/posts/2026/08/26/"
+        var filename, slug, directory;
+        if (parts.length === 4) {
+            // Old layout: YYYY/MM/DD/index.md
+            filename = parts[3];
+            slug = null;
+            directory = POSTS_PREFIX + year + '/' + month + '/' + day + '/';
+        } else if (parts.length === 5) {
+            // New slug leaf bundle: YYYY/MM/DD/<slug>/index.md
+            filename = parts[4];
+            slug = parts[3];
+            directory = POSTS_PREFIX + year + '/' + month + '/' + day + '/' + slug + '/';
+        } else {
+            // Deeper than 5 segments — treat as malformed.
+            return null;
+        }
 
         return {
             year: year,
             month: month,
             day: day,
+            slug: slug,
             filename: filename,
             directory: directory
         };
@@ -101,6 +122,10 @@
                 year: parsed.year,
                 month: parsed.month,
                 day: parsed.day,
+                // slug is the leaf-bundle subdirectory name for new layout
+                // (e.g. "hugo-admin-github-api") and null for the old
+                // date-as-bundle layout.
+                slug: parsed.slug,
                 isIndex: isIndex,
                 isBundle: isIndex && hasBundle,
                 // assetsPath is only meaningful for the bundle entry point
@@ -263,6 +288,13 @@
     /**
      * Build the canonical new-article path: content/posts/YYYY/MM/DD/{filename}
      * If filename is omitted, defaults to index.md (Page Bundle entry).
+     *
+     * NOTE: For brand-new articles the Admin now derives a slug from the
+     * title and writes a slug leaf bundle at:
+     *   content/posts/YYYY/MM/DD/<slug>/index.md
+     * Use buildNewArticlePath() for that layout. buildArticlePath() is
+     * kept for backward compatibility and for the "advanced override"
+     * case where the user supplies their own filename.
      */
     function buildArticlePath(date, filename) {
         var parts = parseDateString(typeof date === 'string' ? date : formatLocalDate(date));
@@ -275,6 +307,70 @@
             String(parts.month).padStart(2, '0') + '/' +
             String(parts.day).padStart(2, '0') +
             '/' + fn;
+    }
+
+    /**
+     * Build a slug leaf bundle path for a brand-new article.
+     *   content/posts/YYYY/MM/DD/<slug>/index.md
+     *
+     * The .md suffix is appended automatically if missing. Both `date`
+     * (YYYY-MM-DD string or Date) and `slug` are required.
+     */
+    function buildNewArticlePath(date, slug) {
+        var parts = parseDateString(typeof date === 'string' ? date : formatLocalDate(date));
+        if (!parts) return '';
+        var s = (slug && String(slug).trim()) || '';
+        if (!s) return '';
+        return 'content/posts/' +
+            parts.year + '/' +
+            String(parts.month).padStart(2, '0') + '/' +
+            String(parts.day).padStart(2, '0') +
+            '/' + s +
+            '/index.md';
+    }
+
+    /**
+     * Derive a filesystem-safe slug from a human-readable title.
+     *
+     *   - lowercase ASCII
+     *   - spaces and any non-[a-z0-9-] characters (except CJK) → '-'
+     *   - consecutive '-' collapsed
+     *   - leading/trailing '-' stripped
+     *   - cap length at 60
+     *   - CJK characters (U+4E00..U+9FFF) preserved verbatim so Hugo URLs
+     *     stay human-readable for Chinese titles
+     *
+     * Returns a non-empty string. Falls back to 'article' if input is
+     * blank or stripping leaves nothing usable.
+     */
+    function slugify(title) {
+        if (!title) return 'article';
+        var s = String(title).toLowerCase();
+        var out = '';
+        for (var i = 0; i < s.length; i++) {
+            var code = s.charCodeAt(i);
+            var ch = s[i];
+            // CJK Unified Ideographs (and common extension blocks) pass through.
+            if (code >= 0x4E00 && code <= 0x9FFF) {
+                out += ch;
+            } else if ((code >= 0x30 && code <= 0x39) || // 0-9
+                       (code >= 0x61 && code <= 0x7A)) { // a-z
+                out += ch;
+            } else {
+                // Everything else (including ASCII letters we already
+                // lowercased, uppercase, punctuation, spaces, hyphens,
+                // underscores, dots, CJK extension A, fullwidth, etc.)
+                // becomes a single separator.
+                out += '-';
+            }
+        }
+        // Collapse runs of '-'.
+        out = out.replace(/-+/g, '-');
+        // Trim leading/trailing '-'.
+        out = out.replace(/^-+|-+$/g, '');
+        // Cap length.
+        if (out.length > 60) out = out.substring(0, 60).replace(/-+$/g, '');
+        return out || 'article';
     }
 
     /**
@@ -454,6 +550,9 @@
         formatLocalDate: formatLocalDate,
         parseDateString: parseDateString,
         buildArticlePath: buildArticlePath,
+        // Stage 13.4 — slug leaf bundle layout for new articles.
+        buildNewArticlePath: buildNewArticlePath,
+        slugify: slugify,
         parseCategoriesInput: parseListInput,
         parseTagsInput: parseListInput,
         validateForm: validateForm,

@@ -827,6 +827,36 @@
             latestRaw: null,
             latestSha: null
         };
+        // ----- Bug 5 fix: synchronously reset all UI + state that could
+        // leak from the previous article. Without this, switching from
+        // article A to B without typing would briefly show A's preview,
+        // A's textarea body, and A's pending images until the API
+        // response for B arrives and re-populates them.
+        if (els.edMarkdownPreview) els.edMarkdownPreview.innerHTML = '';
+        if (els.edBody) els.edBody.value = '';
+        if (els.edTitle) els.edTitle.value = '';
+        if (els.edDate) els.edDate.value = '';
+        if (els.edCategories) els.edCategories.value = '';
+        if (els.edTags) els.edTags.value = '';
+        if (els.edDraft) els.edDraft.checked = false;
+        if (els.edMath) els.edMath.checked = false;
+        // Drop any previous article's edit-mode pending images. We
+        // cannot reuse them under the new path (their targetPath would
+        // be wrong) and they would otherwise leak into the new article's
+        // preview.
+        state.pendingUploads = state.pendingUploads.filter(function (p) {
+            if (p.formMode === 'edit' && p.previewUrl) {
+                try { URL.revokeObjectURL(p.previewUrl); } catch (e) { /* ignore */ }
+                return false;
+            }
+            return true;
+        });
+        renderPendingList('edit');
+        if (els.edImageError) {
+            els.edImageError.hidden = true;
+            els.edImageError.textContent = '';
+        }
+
         if (els.editForm) els.editForm.hidden = false;
         if (els.edLoadStatus) {
             els.edLoadStatus.textContent = '正在读取 GitHub 文件...';
@@ -871,6 +901,9 @@
 
             if (els.edLoadStatus) els.edLoadStatus.hidden = true;
             state.edit.isLoading = false;
+            // Render preview with the new article's body so the user
+            // never sees stale HTML from a previous article.
+            renderEditPreview();
         }).catch(function (err) {
             handleApiError(err);
             state.edit = null;
@@ -1661,13 +1694,43 @@ function updateEditCdnStatus() {
     }
 
     /**
+     * Resolve a unique slug by checking the date directory's existing
+     * entries. If `baseSlug` is taken, appends -2, -3, ... until free.
+     * Returns the free slug string. Falls back to a timestamp if 1000
+     * collisions occur (effectively never).
+     *
+     * `datePath` is the date directory (e.g. "content/posts/2026/09/04").
+     */
+    function findUniqueSlug(token, datePath, baseSlug) {
+        return API.listContents(token, datePath).then(function (res) {
+            var taken = Object.create(null);
+            for (var i = 0; i < res.items.length; i++) {
+                taken[res.items[i].name] = true;
+            }
+            if (!taken[baseSlug]) return baseSlug;
+            for (var n = 2; n < 1000; n++) {
+                var candidate = baseSlug + '-' + n;
+                if (!taken[candidate]) return candidate;
+            }
+            return baseSlug + '-' + Date.now();
+        }).catch(function (err) {
+            // If the date directory itself doesn't exist (404), baseSlug is
+            // trivially free.
+            if (err && err.code === 'NOT_FOUND') return baseSlug;
+            throw err;
+        });
+    }
+
+    /**
      * Submit new article (draft or publish).
-     * Flow:
-     *   1. Validate form
-     *   2. Build path + content
-     *   3. Conflict detection (getFile → expect 404)
-     *   4. createFile
-     *   5. On success: refresh article list (second API call), close form, toast
+     * Flow (Stage 13.4 — slug leaf bundle layout):
+     *   1. Validate form (title, date, optional advanced filename)
+     *   2. Derive slug from title via M.slugify
+     *   3. Resolve unique slug via listContents (auto-append -2, -3 …)
+     *   4. Build path content/posts/YYYY/MM/DD/<slug>/index.md
+     *   5. Conflict detection (getFile → expect 404)
+     *   6. createFile OR submitNewArticleWithImages
+     *   7. On success: refresh article list, close form, toast
      */
     function submitNewArticle(publishMode) {
         if (state.formSubmitting) return;
@@ -1675,6 +1738,9 @@ function updateEditCdnStatus() {
         var formData = collectFormData();
 
         // Filename validation (separate from validateForm so the error maps to the filename field).
+        // Filename is only used when the user overrides the default
+        // 'index.md' (advanced users who want a non-bundle entry file).
+        // The new slug leaf bundle layout always writes index.md.
         var fnValidation = M.validateArticleFilename(formData.filename);
         if (!fnValidation.ok) {
             setFormFieldError('filename', fnValidation.error);
@@ -1691,42 +1757,60 @@ function updateEditCdnStatus() {
             return;
         }
 
-        var path = M.buildArticlePath(formData.date, formData.filename);
-        if (!path) {
-            setFormFieldError('date', '无法生成路径');
+        // Derive slug from title.
+        var baseSlug = M.slugify(formData.title);
+        var dateStr = formData.date;
+        // Build the date directory path so we can list its existing entries.
+        var datePath = (function () {
+            var p = M.parseDateString(dateStr);
+            if (!p) return '';
+            return 'content/posts/' +
+                p.year + '/' +
+                String(p.month).padStart(2, '0') + '/' +
+                String(p.day).padStart(2, '0');
+        })();
+        if (!datePath) {
+            setFormFieldError('date', '无法生成日期路径');
             return;
         }
 
         // Force draft/publish mode based on button.
         formData.draft = !publishMode;
 
+        // Build the article content. The slug is informational only — the
+        // body itself uses no slug-dependent paths (image refs are
+        // relative).
         var content = M.generateFrontMatter(formData);
         var commitMsg = M.sanitizeTitleForCommit(formData.title, publishMode ? 'post:' : 'post: draft');
 
         setSubmitting(true);
         setFormBanner(null);
 
-        // Step 1: conflict detection.
-        API.getFile(state.token, path).then(function () {
-            // 200 — file already exists.
-            throw new API.AdminError('CONFLICT', '该文章路径已经存在，请修改文件名或日期');
-        }).catch(function (err) {
-            // NOT_FOUND is the EXPECTED outcome for a brand-new article —
-            // the contents API returns 404 when the path does not exist.
-            // Treat it as a non-error: do not call handleApiError, do not
-            // surface a toast, do not clear the token. Just dispatch the
-            // create path (with or without pending image uploads).
-            if (err && err.code === 'NOT_FOUND') {
-                // Good — no conflict.
-                // Stage 9B — dispatch based on pending uploads.
-                if (state.pendingUploads.length > 0) {
-                    return submitNewArticleWithImages(path, content, commitMsg);
-                }
-                return API.createFile(state.token, path, content, commitMsg);
+        // Step 1: resolve unique slug.
+        findUniqueSlug(state.token, datePath, baseSlug).then(function (slug) {
+            var path = M.buildNewArticlePath(dateStr, slug);
+            if (!path) {
+                throw new API.AdminError('VALIDATION', '无法生成路径');
             }
-            // Real error (auth/network/etc): surface it and propagate.
-            handleApiError(err);
-            throw err;
+            // Stash on state so addPendingUpload can keep image targets
+            // in sync if the user adds more images after slug resolution.
+            state.newArticlePath = path;
+            state.newArticleSlug = slug;
+
+            // Step 2: conflict detection — getFile on the resolved path.
+            return API.getFile(state.token, path).then(function () {
+                throw new API.AdminError('CONFLICT', '该文章路径已经存在，请修改标题或日期');
+            }).catch(function (err) {
+                if (err && err.code === 'NOT_FOUND') {
+                    // Good — no conflict. Dispatch create path.
+                    if (state.pendingUploads.length > 0) {
+                        return submitNewArticleWithImages(path, content, commitMsg, slug);
+                    }
+                    return API.createFile(state.token, path, content, commitMsg);
+                }
+                handleApiError(err);
+                throw err;
+            });
         }).then(function (result) {
             // Success.
             state.formDirty = false;
@@ -1734,19 +1818,22 @@ function updateEditCdnStatus() {
             var htmlUrl = result.htmlUrl || '';
             var action = publishMode ? '发布' : '草稿已保存';
             var message =
-                '✓ ' + action + '：' + path +
+                '✓ ' + action + '：' + (state.newArticlePath || '') +
                 '\nCommit：' + shortSha;
             U.toast(message, 'success', 6000);
             if (htmlUrl) {
                 window.open(htmlUrl, '_blank', 'noopener,noreferrer');
             }
+            state.newArticlePath = null;
+            state.newArticleSlug = null;
             resetForm();
             hideNewArticleForm();
-            loadArticlesFresh(); // Refresh list to include the new file (bypass CDN cache)
+            loadArticlesFresh();
         }).catch(function (err) {
             handleApiError(err);
             setFormBanner(formatError(err));
-            // Re-enable form on failure.
+            // Keep state.newArticlePath / newArticleSlug so the user can
+            // edit + retry without re-resolving the slug.
         }).then(function () {
             setSubmitting(false);
         });
@@ -1757,9 +1844,23 @@ function updateEditCdnStatus() {
      * Single atomic commit containing: article.md + all new image blobs.
      * For a brand new article, there is no existing remote target to conflict with;
      * we only need to ensure no two pending uploads produce the same name.
+     *
+     * Stage 13.4 — slug leaf bundle layout: `path` is
+     * content/posts/YYYY/MM/DD/<slug>/index.md. All pending image targets
+     * are rewritten to <article_dir>/index.assets/<safeName> on commit
+     * to keep them consistent with the final article path even if the
+     * user added images before the slug was resolved.
      */
-    function submitNewArticleWithImages(path, content, commitMsg) {
+    function submitNewArticleWithImages(path, content, commitMsg, slug) {
         var pending = state.pendingUploads.filter(function (p) { return p.formMode === 'new'; });
+
+        // Compute the slug directory under which every image must live.
+        // path = "content/posts/YYYY/MM/DD/<slug>/index.md"
+        var lastSlash = path.lastIndexOf('/');
+        var slugDir = path.substring(0, lastSlash); // "content/posts/YYYY/MM/DD/<slug>"
+        for (var pi = 0; pi < pending.length; pi++) {
+            pending[pi].targetPath = slugDir + '/index.assets/' + pending[pi].safeName;
+        }
 
         // Total size cap.
         var totalBytes = 0;
@@ -2089,11 +2190,13 @@ function updateEditCdnStatus() {
         if (formMode === 'edit' && state.edit) {
             targetPath = IU.computeTargetPath(state.edit.path, safeName);
         } else {
-            // New: we know the date dir but the article hasn't been created yet.
-            // Use the path that WILL be created.
-            var d = (els.naDate && els.naDate.value) || IU.formatLocalDate(new Date());
-            var dir = 'content/posts/' + d.substring(0, 4) + '/' + d.substring(5, 7) + '/' + d.substring(8, 10);
-            targetPath = dir + '/index.assets/' + safeName;
+            // New: the article path is decided at submit time by
+            // submitNewArticle (slug leaf bundle layout). Use a sentinel
+            // target path here; submitNewArticleWithImages rewrites every
+            // pending target to the final slug directory immediately
+            // before commit. The sentinel lets us render the preview pane
+            // (previewUrl is the actual image source).
+            targetPath = '__PENDING_NEW_ARTICLE__/' + safeName;
         }
 
         // Create preview URL.
