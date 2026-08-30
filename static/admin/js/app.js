@@ -1279,8 +1279,12 @@ function updateEditCdnStatus() {
         els.edDeleteModal.hidden = false;
 
         var sepIdx = article.path.lastIndexOf('/');
-        var dirPath = sepIdx > 0 ? article.path.substring(0, sepIdx) : '';
         var fileName = sepIdx > 0 ? article.path.substring(sepIdx + 1) : article.path;
+        // Article directory (always ends with '/'). For slug leaf bundle
+        // (5-segment path) this is '<dateDir>/<slug>/'; for legacy layout
+        // (4-segment) this is '<dateDir>/'. Derived from article.path
+        // because state.edit does not carry a directory field.
+        var articleDir = article.path.substring(0, sepIdx) + '/';
 
         // Use getCommit + getTreeAt(commit.treeSha, recursive) instead of
         // listContents(dirPath). The contents API is non-recursive, so it
@@ -1288,10 +1292,10 @@ function updateEditCdnStatus() {
         // a bundle article left every image behind in the repo.
         //
         // We collect:
-        //   - actualDelete: every blob/tree entry inside dirPath that
+        //   - actualDelete: every blob/tree entry inside articleDir that
         //     belongs to this article (the .md itself + every entry
-        //     under index.assets/ when bundle)
-        //   - siblingKeep:  everything else inside dirPath
+        //     under index.assets/ when this is a bundle entry)
+        //   - siblingKeep:  everything else inside articleDir
         API.getBranch(state.token).then(function (branch) {
             return API.getCommit(state.token, branch.commitSha).then(function (commit) {
                 return API.getTreeAt(state.token, commit.treeSha, true);
@@ -1301,13 +1305,16 @@ function updateEditCdnStatus() {
                 throw new API.AdminError('VALIDATION',
                     'Tree API 返回截断数据（仓库过大），无法安全删除。');
             }
-            // article.directory already ends with '/', use it directly as prefix.
-            var dirPrefix = article.directory || (dirPath ? dirPath + '/' : '');
-            // article.assetsPath ends with '/' in our article model, but
-            // GitHub Tree entry paths do NOT (e.g. 'index.assets', not
-            // 'index.assets/'). Strip the trailing slash so prefix matches
-            // both the directory entry itself and every file under it.
-            var assetsPrefix = (article.assetsPath || '').replace(/\/+$/, '');
+            // dirPrefix matches everything inside the article's parent
+            // directory (slug dir for new layout, date dir for legacy).
+            var dirPrefix = articleDir;
+            // assetsPrefix is only set when this article is a bundle
+            // entry (filename === 'index.md'). This prevents a sibling
+            // .md in the same directory from accidentally pulling the
+            // shared index.assets/ into its own delete set.
+            var assetsPrefix = (fileName === 'index.md')
+                ? (articleDir + 'index.assets').replace(/\/+$/, '')
+                : null;
             var actualDelete = [];
             var siblingKeep = [];
             for (var i = 0; i < treeRes.tree.length; i++) {
