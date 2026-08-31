@@ -18,7 +18,7 @@ image: https://c.s-microsoft.com/en-us/CMSImages/hero_animation_poster_4K_Sharpe
 
 🐾ventoy(绿色开源)： [官网](https://www.ventoy.net/cn/index.html) [蓝奏云](https://www.lanzouw.com/i1tAAu8zyhe) [直链下载](https://archai.oss-cn-beijing.aliyuncs.com/ventoy-1.0.52-windows.zip)
 
-![image-20210919225025265](https://gitee.com/fintinger/figure-bed/raw/master/img/202109192250138.png)
+![202109192250138](index.assets/202109192250138.png)
 
 第一步：选择设备
 
@@ -28,7 +28,6 @@ image: https://c.s-microsoft.com/en-us/CMSImages/hero_animation_poster_4K_Sharpe
 
 ## 注意保存必要文件
 
-### 如果电脑无法正常打开
 
 
 
