@@ -4,12 +4,22 @@
  * Builds an in-memory Article index from GitHub Tree API entries.
  * No network calls. No DOM. Pure data shaping.
  *
- * Rules:
- *   - Only paths under `content/posts/{year}/{month}/{day}/`
- *   - Only `.md` files (case-insensitive)
- *   - Paths inside any index.assets subtree are NEVER articles
- *   - isBundle is set ONLY for `index.md` whose directory contains an `index.assets/` subtree
- *   - Each Markdown file is one Article — same-directory multi-md is supported
+ * Stage 14.2 — every legal `.md` file under `content/posts/...` is an
+ * Article. Two layouts coexist:
+ *   - legacy: content/posts/YYYY/MM/DD/<filename>.md   (4 segments)
+ *   - slug:   content/posts/YYYY/MM/DD/<slug>/<filename>.md  (5 segments)
+ *
+ * The image directory is ALWAYS named after the article's filename
+ * (with `.assets/` suffix), regardless of layout:
+ *   - Sort.md              → Sort.assets/
+ *   - index.md             → index.assets/
+ *   - externalSort.md      → externalSort.assets/
+ *   - sort/Sort.md         → sort/Sort.assets/
+ *
+ * Files *inside* any `<filename>.assets/` subtree are NEVER articles
+ * (they are image assets).
+ *
+ * Same-directory multi-md is supported in both layouts.
  */
 
 (function () {
@@ -19,30 +29,41 @@
 
     /**
      * Check if a tree entry is a candidate article path.
+     *
+     * Stage 14.2 — accept any `.md` file under content/posts/. Reject
+     * any path inside an `<filename>.assets/` subtree. We no longer
+     * hard-code `index.assets/`; we approximate with a generic
+     * `/.assets/` check because the rule is the same shape regardless
+     * of filename.
      */
     function isArticlePath(path) {
         if (!path) return false;
         if (path.indexOf(POSTS_PREFIX) !== 0) return false;
         if (path.toLowerCase().indexOf('.md') !== path.length - 3) return false;
-        // Reject anything inside an index.assets directory.
-        if (path.indexOf('/index.assets/') >= 0) return false;
+        // Reject anything inside any "<filename>.assets/" directory.
+        // We treat "<filename>.assets/" as the canonical assets suffix;
+        // this also covers legacy "index.assets/" since it is a special
+        // case of "<filename>.assets/" with filename=index.
+        if (path.indexOf('/.assets/') >= 0) return false;
         return true;
     }
 
     /**
-     * Parse a posts path into year / month / day / filename / directory / slug.
-     * Supports both old and new article layouts:
+     * Parse a posts path into year / month / day / filename / directory / slug / layout / fileBaseName.
      *
-     *   Old (no slug subdir):  content/posts/YYYY/MM/DD/index.md   (4 segments after prefix)
-     *   New (slug leaf bundle): content/posts/YYYY/MM/DD/<slug>/index.md  (5 segments after prefix)
+     * Stage 14.2 — any legal `.md` filename is accepted. Layout is:
+     *   - 'legacy' for 4-segment paths: content/posts/YYYY/MM/DD/<filename>.md
+     *   - 'slug'   for 5-segment paths: content/posts/YYYY/MM/DD/<slug>/<filename>.md
      *
      * Returns null if path is not a well-formed posts path.
-     * `slug` is null for the old layout, set to the subdir name for the new layout.
-     * `directory` is the directory containing the .md file (i.e. the slug
-     * directory for new layout, or the date directory for old layout).
+     * `slug` is null for legacy, set to the subdir name for slug.
+     * `directory` is the directory containing the .md file
+     *   (slug directory for slug layout, or date directory for legacy).
+     * `fileBaseName` is `filename` with the trailing `.md` stripped —
+     *   used to derive the assets directory name.
      */
     function parsePath(path) {
-        var rest = path.substring(POSTS_PREFIX.length); // "2026/08/26/index.md" or "2026/08/26/foo/index.md"
+        var rest = path.substring(POSTS_PREFIX.length);
         var parts = rest.split('/');
         if (parts.length < 4) return null;
 
@@ -50,26 +71,29 @@
         var month = parts[1];
         var day = parts[2];
 
-        // Loose validation: year/month/day are 4 / 2 / 2 digit strings.
         if (!/^\d{4}$/.test(year)) return null;
         if (!/^\d{2}$/.test(month)) return null;
         if (!/^\d{2}$/.test(day)) return null;
 
-        var filename, slug, directory;
+        var filename, slug, directory, layout;
         if (parts.length === 4) {
-            // Old layout: YYYY/MM/DD/index.md
+            // Legacy layout: content/posts/YYYY/MM/DD/<filename>.md
             filename = parts[3];
             slug = null;
+            layout = 'legacy';
             directory = POSTS_PREFIX + year + '/' + month + '/' + day + '/';
         } else if (parts.length === 5) {
-            // New slug leaf bundle: YYYY/MM/DD/<slug>/index.md
+            // Slug layout: content/posts/YYYY/MM/DD/<slug>/<filename>.md
             filename = parts[4];
             slug = parts[3];
+            layout = 'slug';
             directory = POSTS_PREFIX + year + '/' + month + '/' + day + '/' + slug + '/';
         } else {
             // Deeper than 5 segments — treat as malformed.
             return null;
         }
+
+        var fileBaseName = filename.replace(/\.md$/i, '');
 
         return {
             year: year,
@@ -77,28 +101,38 @@
             day: day,
             slug: slug,
             filename: filename,
-            directory: directory
+            fileBaseName: fileBaseName,
+            directory: directory,
+            layout: layout
         };
     }
 
     /**
      * Build the Article list from raw tree entries.
-     * Walks the tree twice: once to collect bundle directories, once to emit articles.
+     * Walks the tree twice: once to collect "<filename>.assets/" directories,
+     * once to emit Article records.
+     *
+     * Stage 14.2 — every legal `.md` file is an Article. The assets
+     * directory name always matches the article's filename with the
+     * `.assets/` suffix. This covers legacy `index.assets/` (filename
+     * = index.md) and arbitrary names like `Sort.assets/`.
      */
     function parseTree(treeEntries) {
         if (!Array.isArray(treeEntries)) return [];
 
-        // First pass: collect directories that contain index.assets/ subtrees.
-        var bundleDirs = Object.create(null);
+        // First pass: collect every "<filename>.assets/" directory entry.
+        // Key: '<dir>/<filename>.assets'
+        var assetsDirs = Object.create(null);
         for (var i = 0; i < treeEntries.length; i++) {
             var entry = treeEntries[i];
             if (entry.type !== 'tree') continue;
             var p = entry.path;
-            var idx = p.indexOf('/index.assets');
-            if (idx > 0 && p.substring(idx) === '/index.assets') {
-                // Tree entry is itself the index.assets subtree; mark its parent.
-                var dir = p.substring(0, idx) + '/';
-                bundleDirs[dir] = true;
+            var lastSlash = p.lastIndexOf('/');
+            var base = lastSlash >= 0 ? p.substring(0, lastSlash) : '';
+            var leaf = lastSlash >= 0 ? p.substring(lastSlash + 1) : p;
+            // Only treat "<leaf>.assets" as the assets directory.
+            if (/\.assets$/.test(leaf)) {
+                assetsDirs[base + '/' + leaf] = true;
             }
         }
 
@@ -112,28 +146,25 @@
             var parsed = parsePath(e.path);
             if (!parsed) continue;
 
-            var isIndex = parsed.filename === 'index.md';
-            var hasBundle = !!bundleDirs[parsed.directory];
+            // assetsPath = '<directory><filename>.assets/' when that subtree
+            // exists in the tree. Null otherwise — the upload flow can still
+            // create it on the first image upload (GitHub creates missing
+            // intermediate directories).
+            var assetsKey = parsed.directory + parsed.fileBaseName + '.assets';
+            var hasAssets = !!assetsDirs[assetsKey];
+            var assetsPath = hasAssets ? (assetsKey + '/') : null;
 
             articles.push({
                 path: e.path,
                 filename: parsed.filename,
+                fileBaseName: parsed.fileBaseName,
                 directory: parsed.directory,
                 year: parsed.year,
                 month: parsed.month,
                 day: parsed.day,
-                // slug is the leaf-bundle subdirectory name for new layout
-                // (e.g. "hugo-admin-github-api") and null for the old
-                // date-as-bundle layout.
                 slug: parsed.slug,
-                isIndex: isIndex,
-                isBundle: isIndex && hasBundle,
-                // assetsPath is only meaningful for the bundle entry point
-                // (index.md with an index.assets/ sibling). For a sibling
-                // .md in the same directory it must be null — otherwise the
-                // delete flow would treat the bundle's images as belonging
-                // to the sibling article and drop them on its delete.
-                assetsPath: (isIndex && hasBundle) ? (parsed.directory + 'index.assets/') : null,
+                layout: parsed.layout,           // 'legacy' | 'slug'
+                assetsPath: assetsPath,         // null OR '<dir><fb>.assets/'
                 sha: e.sha,
                 size: typeof e.size === 'number' ? e.size : null
             });
@@ -142,50 +173,80 @@
         return articles;
     }
 
-    /**
-     * Sort articles by year desc, month desc, day desc, filename asc.
+/**
+     * Sort articles by year desc, month desc, day desc, then filename asc.
      * In-place.
+     *
+     * Stage 14.2 — filename (which is unique within a date dir because
+     * of slug subdirs for slug layout, or just unique by name for legacy)
+     * is a stable, deterministic sort key.
      */
     function sortArticles(articles) {
         articles.sort(function (a, b) {
             if (a.year !== b.year) return b.year < a.year ? -1 : 1;
             if (a.month !== b.month) return b.month < a.month ? -1 : 1;
-            if (a.day !== b.day) return b.day < b.day ? -1 : 1;
-            if (a.filename < b.filename) return -1;
-            if (a.filename > b.filename) return 1;
+            if (a.day !== b.day) return b.day < a.day ? -1 : 1;
+            var ak = a.filename || '';
+            var bk = b.filename || '';
+            if (ak < bk) return -1;
+            if (ak > bk) return 1;
             return 0;
         });
         return articles;
     }
 
     /**
-     * Build a nested directory structure: { year: { month: { day: [articles] } } }.
-     * Years/months/days are also exposed as ordered arrays via the returned metadata.
+     * Build a nested directory structure:
+     *   {
+     *     byYear, yearOrder, monthOrderByYear, dayOrderByYearMonth
+     *     legacyByYearMonthDay: [year][month][day] = [Article]
+     *     slugByYearMonthDay:   [year][month][day][slug] = [Article]
+     *   }
+     *
+     * The render layer uses the new legacy / slug buckets to produce a
+     * tree that shows the slug subdirectory as a real layer (Stage 14.3
+     * Bug 4). Legacy articles stay flat under their day — we never
+     * invent a fake slug node for them.
      */
     function buildDirectoryTree(articles) {
         var byYear = Object.create(null);
         var yearOrder = [];
         var monthOrderByYear = {};
         var dayOrderByYearMonth = {};
+        var legacyByYearMonthDay = Object.create(null);
+        var slugByYearMonthDay = Object.create(null);
+
+        function ensureDay(y, m, d) {
+            if (!byYear[y]) {
+                byYear[y] = { _order: [] };
+                yearOrder.push(y);
+                monthOrderByYear[y] = [];
+                dayOrderByYearMonth[y] = {};
+            }
+            if (!byYear[y][m]) {
+                byYear[y][m] = { _order: [] };
+                monthOrderByYear[y].push(m);
+                dayOrderByYearMonth[y][m] = [];
+            }
+            if (!byYear[y][m][d]) {
+                byYear[y][m][d] = [];
+                dayOrderByYearMonth[y][m].push(d);
+            }
+        }
 
         for (var i = 0; i < articles.length; i++) {
             var a = articles[i];
-            if (!byYear[a.year]) {
-                byYear[a.year] = { _order: [] };
-                yearOrder.push(a.year);
-                monthOrderByYear[a.year] = [];
-                dayOrderByYearMonth[a.year] = {};
+            ensureDay(a.year, a.month, a.day);
+
+            var ymdKey = a.year + '/' + a.month + '/' + a.day;
+            if (a.layout === 'slug' && a.slug) {
+                if (!slugByYearMonthDay[ymdKey]) slugByYearMonthDay[ymdKey] = Object.create(null);
+                if (!slugByYearMonthDay[ymdKey][a.slug]) slugByYearMonthDay[ymdKey][a.slug] = [];
+                slugByYearMonthDay[ymdKey][a.slug].push(a);
+            } else {
+                if (!legacyByYearMonthDay[ymdKey]) legacyByYearMonthDay[ymdKey] = [];
+                legacyByYearMonthDay[ymdKey].push(a);
             }
-            if (!byYear[a.year][a.month]) {
-                byYear[a.year][a.month] = { _order: [] };
-                monthOrderByYear[a.year].push(a.month);
-                dayOrderByYearMonth[a.year][a.month] = [];
-            }
-            if (!byYear[a.year][a.month][a.day]) {
-                byYear[a.year][a.month][a.day] = [];
-                dayOrderByYearMonth[a.year][a.month].push(a.day);
-            }
-            byYear[a.year][a.month][a.day].push(a);
         }
 
         // Sort orders desc.
@@ -204,7 +265,9 @@
             byYear: byYear,
             yearOrder: yearOrder,
             monthOrderByYear: monthOrderByYear,
-            dayOrderByYearMonth: dayOrderByYearMonth
+            dayOrderByYearMonth: dayOrderByYearMonth,
+            legacyByYearMonthDay: legacyByYearMonthDay,
+            slugByYearMonthDay: slugByYearMonthDay
         };
     }
 
@@ -286,47 +349,42 @@
     }
 
     /**
-     * Build the canonical new-article path: content/posts/YYYY/MM/DD/{filename}
-     * If filename is omitted, defaults to index.md (Page Bundle entry).
+     * Build the canonical new-article path. Stage 14.2:
+     *   content/posts/YYYY/MM/DD/<slug>/<filename>.md
      *
-     * NOTE: For brand-new articles the Admin now derives a slug from the
-     * title and writes a slug leaf bundle at:
-     *   content/posts/YYYY/MM/DD/<slug>/index.md
-     * Use buildNewArticlePath() for that layout. buildArticlePath() is
-     * kept for backward compatibility and for the "advanced override"
-     * case where the user supplies their own filename.
+     * If filename is omitted, defaults to '<slug>.md'. The .md suffix
+     * is appended automatically if missing.
+     */
+    function buildNewArticlePath(date, slug, filename) {
+        var parts = parseDateString(typeof date === 'string' ? date : formatLocalDate(date));
+        if (!parts) return '';
+        var s = (slug && String(slug).trim()) || '';
+        if (!s) return '';
+        var fn = (filename && String(filename).trim()) || (s + '.md');
+        if (fn.toLowerCase().slice(-3) !== '.md') fn += '.md';
+        return 'content/posts/' +
+            parts.year + '/' +
+            String(parts.month).padStart(2, '0') + '/' +
+            String(parts.day).padStart(2, '0') +
+            '/' + s +
+            '/' + fn;
+    }
+
+    /**
+     * Build the legacy-format new-article path. Stage 14.2 — kept
+     * available for advanced overrides where the user wants a flat
+     * layout. New articles default to slug layout via buildNewArticlePath.
      */
     function buildArticlePath(date, filename) {
         var parts = parseDateString(typeof date === 'string' ? date : formatLocalDate(date));
         if (!parts) return '';
-        var fn = (filename && String(filename).trim()) || 'index.md';
-        // Filename must have already been validated; we only normalize the .md suffix here.
+        var fn = (filename && String(filename).trim()) || 'article.md';
         if (fn.toLowerCase().slice(-3) !== '.md') fn += '.md';
         return 'content/posts/' +
             parts.year + '/' +
             String(parts.month).padStart(2, '0') + '/' +
             String(parts.day).padStart(2, '0') +
             '/' + fn;
-    }
-
-    /**
-     * Build a slug leaf bundle path for a brand-new article.
-     *   content/posts/YYYY/MM/DD/<slug>/index.md
-     *
-     * The .md suffix is appended automatically if missing. Both `date`
-     * (YYYY-MM-DD string or Date) and `slug` are required.
-     */
-    function buildNewArticlePath(date, slug) {
-        var parts = parseDateString(typeof date === 'string' ? date : formatLocalDate(date));
-        if (!parts) return '';
-        var s = (slug && String(slug).trim()) || '';
-        if (!s) return '';
-        return 'content/posts/' +
-            parts.year + '/' +
-            String(parts.month).padStart(2, '0') + '/' +
-            String(parts.day).padStart(2, '0') +
-            '/' + s +
-            '/index.md';
     }
 
     /**
@@ -550,7 +608,8 @@
         formatLocalDate: formatLocalDate,
         parseDateString: parseDateString,
         buildArticlePath: buildArticlePath,
-        // Stage 13.4 — slug leaf bundle layout for new articles.
+        // Stage 14.2 — slug leaf bundle with arbitrary filename:
+        //   content/posts/YYYY/MM/DD/<slug>/<filename>.md
         buildNewArticlePath: buildNewArticlePath,
         slugify: slugify,
         parseCategoriesInput: parseListInput,

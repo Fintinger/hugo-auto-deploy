@@ -202,9 +202,9 @@
             </div>
 
             <div class="form-row">
-                <label for="na-filename" class="label">文件名 <span class="required">*</span></label>
-                <input id="na-filename" type="text" class="input" value="index.md" placeholder="index.md" maxlength="80" autocomplete="off" spellcheck="false">
-                <p class="hint">默认 <code>index.md</code>（Page Bundle 入口）；可改为 <code>network.md</code>、<code>中文标题.md</code> 等。允许中文 / 英文 / 数字 / <code>-</code> / <code>_</code> / <code>.</code> / 空格；不允许路径分隔符。</p>
+                <label for="na-filename" class="label">文件名</label>
+                <input id="na-filename" type="text" class="input" value="" placeholder="（留空则自动使用 <slug>.md）" maxlength="80" autocomplete="off" spellcheck="false">
+                <p class="hint">Stage 14.2 — 新文章文件名（决定 assets 目录名）。留空自动使用 <code>&lt;slug&gt;.md</code>；可填 <code>Sort.md</code>、<code>index.md</code> 等任意合法 <code>.md</code> 名。最终文章路径 <code>content/posts/YYYY/MM/DD/&lt;slug&gt;/&lt;filename&gt;.md</code>，图片目录 <code>&lt;filename&gt;.assets/</code>。</p>
                 <p class="hint" id="na-filename-error"></p>
             </div>
 

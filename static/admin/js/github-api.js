@@ -721,6 +721,17 @@
                                     }
                                     throw refRes.error;
                                 }
+                                // Stage 14.3 — Bug 2 contract guard. Refuse
+                                // to return a malformed result so callers
+                                // never see `result.commitSha === undefined`.
+                                if (!newCommitSha) {
+                                    throw new AdminError('UNKNOWN',
+                                        'GitHub API 返回的 commit SHA 为空');
+                                }
+                                if (!newTreeSha) {
+                                    throw new AdminError('UNKNOWN',
+                                        'GitHub API 返回的 tree SHA 为空');
+                                }
                                 return {
                                     commitSha: newCommitSha,
                                     treeSha: newTreeSha,

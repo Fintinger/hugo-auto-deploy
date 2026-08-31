@@ -155,7 +155,11 @@
         edit: null,
         deletePreview: null,
         // Stage 9A — pending image uploads (in-memory only, not yet pushed to GitHub)
-        pendingUploads: []      // [{ id, file, originalName, safeName, type, size, previewUrl, status:'pending', targetPath, formMode:'new'|'edit' }]
+        pendingUploads: [],     // [{ id, file, originalName, safeName, type, size, previewUrl, status:'pending', targetPath, formMode:'new'|'edit' }]
+        // Stage 14.1 — generation counter for loadArticleForEdit. Bumped
+        // every time the user opens a different article; stale API responses
+        // (A's response arriving after B has been opened) are discarded.
+        editGeneration: 0
     };
 
     /* ============================================
@@ -673,9 +677,89 @@
         var children = document.createElement('div');
         children.className = 'tree-children';
         if (state.collapsed['y:' + year + ':m:' + month + ':d:' + day]) children.classList.add('collapsed');
+
+        // Stage 14.3 — Bug 4. Render legacy articles flat, then group
+        // slug-bundle articles under their slug subdir rows. Legacy
+        // articles must NOT be wrapped in a fake slug node.
+        var ymdKey = year + '/' + month + '/' + day;
+        var legacyList = (dir.legacyByYearMonthDay && dir.legacyByYearMonthDay[ymdKey]) || [];
+        for (var li = 0; li < legacyList.length; li++) {
+            children.appendChild(buildFileNode(legacyList[li]));
+        }
+        var slugMap = (dir.slugByYearMonthDay && dir.slugByYearMonthDay[ymdKey]) || {};
+        var slugNames = Object.keys(slugMap).sort();
+        for (var si = 0; si < slugNames.length; si++) {
+            children.appendChild(buildSlugGroupNode(slugNames[si], slugMap[slugNames[si]]));
+        }
+        // Keep legacy buildFileNode iteration as a safety net for
+        // data layers that may not have been re-bucketed (e.g. cached
+        // buildDirectoryTree results from before the upgrade). The
+        // buildFileNode's `dataset.path` means a duplicate render is
+        // visible to the user as a duplicate, which is better than a
+        // silent missing entry — but the new buckets above already cover
+        // every modern parseTree output.
         var articles = dir.byYear[year][month][day] || [];
         for (var i = 0; i < articles.length; i++) {
-            children.appendChild(buildFileNode(articles[i]));
+            // Skip articles that we already rendered via the buckets
+            // above to avoid duplicating them.
+            var alreadyRendered = false;
+            if (articles[i].layout === 'slug' && articles[i].slug) {
+                if (slugMap[articles[i].slug]) {
+                    var arr = slugMap[articles[i].slug];
+                    for (var k = 0; k < arr.length; k++) {
+                        if (arr[k] === articles[i]) { alreadyRendered = true; break; }
+                    }
+                }
+            } else {
+                for (var k2 = 0; k2 < legacyList.length; k2++) {
+                    if (legacyList[k2] === articles[i]) { alreadyRendered = true; break; }
+                }
+            }
+            if (!alreadyRendered) children.appendChild(buildFileNode(articles[i]));
+        }
+        wrap.appendChild(children);
+        return wrap;
+    }
+
+    /**
+     * Stage 14.3 — Bug 4. Slug subdir wrapper for slug-bundle articles.
+     * Renders a collapsible row labelled with the slug name; the
+     * contained <buildFileNode>(s) for the bundle's <filename>.md are
+     * the only rows that trigger selectArticle on click. The slug row
+     * itself only toggles expand/collapse.
+     */
+    function buildSlugGroupNode(slug, articlesInGroup) {
+        var wrap = document.createElement('div');
+        wrap.className = 'tree-node';
+
+        var row = document.createElement('div');
+        row.className = 'tree-row';
+        row.dataset.key = 'slug:' + slug;
+        row.setAttribute('role', 'treeitem');
+
+        var toggle = document.createElement('span');
+        toggle.className = 'tree-toggle';
+        toggle.textContent = state.collapsed['slug:' + slug] ? '▸' : '▾';
+
+        var label = document.createElement('span');
+        label.className = 'tree-label slug';
+        label.textContent = slug;
+
+        row.appendChild(toggle);
+        row.appendChild(label);
+
+        row.addEventListener('click', function () {
+            state.collapsed['slug:' + slug] = !state.collapsed['slug:' + slug];
+            renderArticleTree();
+        });
+
+        wrap.appendChild(row);
+
+        var children = document.createElement('div');
+        children.className = 'tree-children';
+        if (state.collapsed['slug:' + slug]) children.classList.add('collapsed');
+        for (var i = 0; i < articlesInGroup.length; i++) {
+            children.appendChild(buildFileNode(articlesInGroup[i]));
         }
         wrap.appendChild(children);
         return wrap;
@@ -692,13 +776,19 @@
 
         var name = document.createElement('span');
         name.className = 'tree-file-name';
-        name.textContent = article.filename;
-        if (article.isBundle) {
-            var marker = document.createElement('span');
-            marker.className = 'bundle-marker';
-            marker.textContent = '📦 bundle';
-            name.appendChild(marker);
-        }
+        // Stage 14.2 — display is always filename without the `.md`
+        // extension. Same-day articles are disambiguated by their slug
+        // subdir + filename combination, so two `index.md` files under
+        // different slug directories render as `index` in their own row,
+        // and the user can still tell them apart from the full path in
+        // the selected-article panel. We deliberately do NOT call
+        // getFile to fetch front matter title here — the list view
+        // renders O(articles) nodes and the Git Tree API call must
+        // remain the only network request.
+        var displayName = (article.fileBaseName)
+            ? article.fileBaseName
+            : (article.filename || '').replace(/\.md$/i, '');
+        name.textContent = displayName;
 
         var size = document.createElement('span');
         size.className = 'tree-file-size';
@@ -721,7 +811,10 @@
         if (els.articleSelectedSha) els.articleSelectedSha.textContent = article.sha || '—';
         if (els.articleSelectedSize) els.articleSelectedSize.textContent = M.formatSize(article.size) || '—';
         if (els.articleSelectedBundle) {
-            els.articleSelectedBundle.textContent = article.isBundle
+            // Stage 14.2 — assetsPath now follows "<filename>.assets/".
+            // Show it when present (assets directory exists in the tree);
+            // "否" otherwise. We no longer gate on isBundle.
+            els.articleSelectedBundle.textContent = article.assetsPath
                 ? ('是 · ' + article.assetsPath)
                 : '否';
         }
@@ -809,10 +902,38 @@
         if (els.editArticleBtn) els.editArticleBtn.disabled = submitting;
     }
 
-    function loadArticleForEdit(path) {
+function loadArticleForEdit(path) {
         if (state.formVisible) hideNewArticleForm();
+        // Stage 14.1 — generation counter. Every open bumps the value;
+        // stale API responses from an earlier open are discarded below.
+        var gen = ++state.editGeneration;
+
+        // Look up the article in the cached list so we can seed filename /
+        // fileBaseName / directory / slug / layout / assetsPath on
+        // state.edit. parseTree already computed these; copying avoids
+        // the addPendingUpload path having to recompute them, and it
+        // gives openDeleteModal a stable directory to compare against.
+        var cached = null;
+        for (var ai = 0; ai < state.articles.length; ai++) {
+            if (state.articles[ai].path === path) {
+                cached = state.articles[ai];
+                break;
+            }
+        }
+
         state.edit = {
             path: path,
+            // Stage 14.2 — Article model uses filename / fileBaseName /
+            // layout / assetsPath instead of the legacy isBundle / isIndex
+            // / isLegacy fields. Image upload derives targetPath from
+            // path + fileBaseName; there is no longer a "is this a
+            // bundle" upload gate.
+            filename: cached ? cached.filename : null,
+            fileBaseName: cached ? cached.fileBaseName : null,
+            layout: cached ? cached.layout : null,
+            directory: cached ? cached.directory : null,
+            slug: cached ? cached.slug : null,
+            assetsPath: cached ? cached.assetsPath : null,
             originalSha: null,
             originalRaw: null,
             originalFrontMatterRaw: null,
@@ -823,7 +944,7 @@
             isLoading: true,
             isSaving: false,
             isDirty: false,
-            // Cached latest response (used by save / conflict resolution).
+            // Cached latest response (used for save / conflict resolution).
             latestRaw: null,
             latestSha: null
         };
@@ -865,10 +986,13 @@
         if (els.edErrorBanner) els.edErrorBanner.hidden = true;
         if (els.edSuccessBanner) els.edSuccessBanner.hidden = true;
         if (els.edConflictBanner) els.edConflictBanner.hidden = true;
-        // Disable save while loading.
+        // Disable save before update loading.
         setEditSubmitting(true);
 
         API.getFile(state.token, path).then(function (file) {
+            // Stage 14.1 — drop the response if the user has already
+            // opened a different article while we were waiting.
+            if (gen !== state.editGeneration) return;
             var parsed = window.FrontMatter.parse(file.content);
             var fields = window.FrontMatter.extractFields(parsed.frontMatterRaw);
 
@@ -905,6 +1029,9 @@
             // never sees stale HTML from a previous article.
             renderEditPreview();
         }).catch(function (err) {
+            // Stage 14.1 — don't surface an error from a request the user
+            // has already abandoned by opening another article.
+            if (gen !== state.editGeneration) return;
             handleApiError(err);
             state.edit = null;
             if (els.editForm) els.editForm.hidden = true;
@@ -1189,13 +1316,16 @@
             return;
         }
         // Pre-process: replace pending-image refs with safe markers so marked.js
-        // does not try to resolve them as URLs.
+        // does not try to resolve them as URLs. Stage 14.2 — the assets
+        // directory name is derived from the article's fileBaseName
+        // (carried on the pending record), so the substitution key is
+        // "<fileBaseName>.assets/<safeName>".
         var bodyValue = els.edBody ? els.edBody.value : '';
         var processed = bodyValue;
         for (var i = 0; i < state.pendingUploads.length; i++) {
             var p = state.pendingUploads[i];
             if (p.formMode !== 'edit') continue;
-            var ref = 'index.assets/' + p.safeName;
+            var ref = (p.fileBaseName || '') + '.assets/' + p.safeName;
             var placeholder = 'PENDINGIMG:' + i;
             // Replace all occurrences of this ref in the markdown source.
             processed = processed.split(ref).join(placeholder);
@@ -1237,29 +1367,6 @@ function updateEditCdnStatus() {
        ============================================ */
 
     /**
-     * Compute the set of files to delete for a given article.
-     *  - Always: article.path (the .md file)
-     *  - If article.isBundle: also every file under article.assetsPath
-     *  - Never: sibling .md files in the same directory
-     *  - Never: assets that might be shared with other files
-     *
-     * Note: this is the local computed intent. The actual delete list must
-     * be re-verified against the remote tree at delete time.
-     */
-    function computeDeleteFiles(article) {
-        if (!article) return [];
-        var files = [article.path];
-        if (article.isBundle && article.assetsPath) {
-            // List assets from the current article's known assets.
-            // Actual remote assets are looked up at delete time.
-            // For now, we only know the directory. The remote tree is
-            // queried when building the actual delete set in openDeleteModal.
-            files.push(article.assetsPath);
-        }
-        return files;
-    }
-
-    /**
      * Open the delete confirmation modal. Computes the actual delete set by
      * querying the remote tree (NEVER trusting cached state) and presents
      * the file list + requires title confirmation.
@@ -1280,7 +1387,7 @@ function updateEditCdnStatus() {
 
         var sepIdx = article.path.lastIndexOf('/');
         var fileName = sepIdx > 0 ? article.path.substring(sepIdx + 1) : article.path;
-        // Article directory (always ends with '/'). For slug leaf bundle
+        // Article directory (always ends with '/'). For slug layout
         // (5-segment path) this is '<dateDir>/<slug>/'; for legacy layout
         // (4-segment) this is '<dateDir>/'. Derived from article.path
         // because state.edit does not carry a directory field.
@@ -1288,13 +1395,13 @@ function updateEditCdnStatus() {
 
         // Use getCommit + getTreeAt(commit.treeSha, recursive) instead of
         // listContents(dirPath). The contents API is non-recursive, so it
-        // never returns files under index.assets/. As a result, deleting
-        // a bundle article left every image behind in the repo.
+        // never returns files under "<filename>.assets/".
         //
         // We collect:
         //   - actualDelete: every blob/tree entry inside articleDir that
-        //     belongs to this article (the .md itself + every entry
-        //     under index.assets/ when this is a bundle entry)
+        //     belongs to this article: the .md itself + every entry
+        //     under "<filename>.assets/" (the assets directory named
+        //     after the article file)
         //   - siblingKeep:  everything else inside articleDir
         API.getBranch(state.token).then(function (branch) {
             return API.getCommit(state.token, branch.commitSha).then(function (commit) {
@@ -1305,25 +1412,20 @@ function updateEditCdnStatus() {
                 throw new API.AdminError('VALIDATION',
                     'Tree API 返回截断数据（仓库过大），无法安全删除。');
             }
-            // dirPrefix matches everything inside the article's parent
-            // directory (slug dir for new layout, date dir for legacy).
+            // Stage 14.2 — assets directory is named "<fileBaseName>.assets"
+            // where fileBaseName = filename without the trailing ".md".
+            // For Sort.md → Sort.assets, index.md → index.assets, etc.
+            var fileBaseName = fileName.replace(/\.md$/i, '');
             var dirPrefix = articleDir;
-            // assetsPrefix is only set when this article is a bundle
-            // entry (filename === 'index.md'). This prevents a sibling
-            // .md in the same directory from accidentally pulling the
-            // shared index.assets/ into its own delete set.
-            var assetsPrefix = (fileName === 'index.md')
-                ? (articleDir + 'index.assets').replace(/\/+$/, '')
-                : null;
+            var assetsPrefix = (articleDir + fileBaseName + '.assets').replace(/\/+$/, '');
             var actualDelete = [];
             var siblingKeep = [];
             for (var i = 0; i < treeRes.tree.length; i++) {
                 var e = treeRes.tree[i];
                 // Only consider entries under this article's directory.
                 if (dirPrefix && e.path.indexOf(dirPrefix) !== 0) continue;
-                var inBundle = !!(assetsPrefix &&
-                    (e.path === assetsPrefix ||
-                     e.path.indexOf(assetsPrefix + '/') === 0));
+                var inBundle = (e.path === assetsPrefix) ||
+                                (e.path.indexOf(assetsPrefix + '/') === 0);
                 var isArticleFile = (e.path === article.path);
                 if (isArticleFile || inBundle) {
                     actualDelete.push(e.path);
@@ -1618,7 +1720,7 @@ function updateEditCdnStatus() {
     function resetForm() {
         if (els.naTitle) els.naTitle.value = '';
         if (els.naDate) els.naDate.value = M.formatLocalDate(new Date());
-        if (els.naFilename) els.naFilename.value = 'index.md';
+        if (els.naFilename) els.naFilename.value = ''; // Stage 14.1 — slug override starts empty.
         if (els.naCategories) els.naCategories.value = '';
         if (els.naTags) els.naTags.value = '';
         if (els.naDraft) els.naDraft.checked = true;
@@ -1657,11 +1759,22 @@ function updateEditCdnStatus() {
         }
     }
 
-    function updatePathPreview() {
+function updatePathPreview() {
         if (!els.naPathPreview) return;
         var dateStr = (els.naDate && els.naDate.value) || M.formatLocalDate(new Date());
-        var filename = (els.naFilename && els.naFilename.value) || 'index.md';
-        els.naPathPreview.textContent = M.buildArticlePath(dateStr, filename) || '—';
+        // Stage 14.2 — slug is auto-derived from the title; filename
+        // defaults to '<slug>.md' but can be overridden (e.g. 'Sort.md').
+        // Final path is content/posts/YYYY/MM/DD/<slug>/<filename>.md and
+        // the assets directory is '<filename>.assets/' (Stage 14.2 §10).
+        var title = (els.naTitle && els.naTitle.value || '').trim();
+        var slug = M.slugify(title);
+        if (!slug) {
+            els.naPathPreview.textContent = '— 请先输入标题 —';
+            return;
+        }
+        var fnInput = (els.naFilename && els.naFilename.value || '').trim();
+        var filename = fnInput || (slug + '.md');
+        els.naPathPreview.textContent = M.buildNewArticlePath(dateStr, slug, filename) || '—';
     }
 
     function markDirty() {
@@ -1670,16 +1783,20 @@ function updateEditCdnStatus() {
         }
     }
 
-    function collectFormData() {
+function collectFormData() {
         return {
             title: (els.naTitle && els.naTitle.value || '').trim(),
             date: (els.naDate && els.naDate.value) || '',
-            filename: ((els.naFilename && els.naFilename.value) || 'index.md').trim(),
+            // Stage 14.1 — the form field with id na-filename now carries
+            // an optional slug override (no .md suffix). The article is
+            // always written as <slug>/index.md; this value only seeds
+            // the base slug passed to findUniqueSlug.
+            filename: ((els.naFilename && els.naFilename.value) || '').trim(),
             categories: M.parseCategoriesInput(els.naCategories && els.naCategories.value || ''),
             tags: M.parseTagsInput(els.naTags && els.naTags.value || ''),
             draft: !!(els.naDraft && els.naDraft.checked),
             math: !!(els.naMath && els.naMath.checked),
-            body: (els.naBody && els.naBody.value) || ''
+            body: (els.naBody && els.naBody.value || '').trim()
         };
     }
 
@@ -1744,17 +1861,6 @@ function updateEditCdnStatus() {
         clearFormErrors();
         var formData = collectFormData();
 
-        // Filename validation (separate from validateForm so the error maps to the filename field).
-        // Filename is only used when the user overrides the default
-        // 'index.md' (advanced users who want a non-bundle entry file).
-        // The new slug leaf bundle layout always writes index.md.
-        var fnValidation = M.validateArticleFilename(formData.filename);
-        if (!fnValidation.ok) {
-            setFormFieldError('filename', fnValidation.error);
-            return;
-        }
-        formData.filename = fnValidation.normalized;
-
         var validation = M.validateForm(formData);
         if (!validation.ok) {
             if (validation.errors.title) setFormFieldError('title', validation.errors.title);
@@ -1764,8 +1870,18 @@ function updateEditCdnStatus() {
             return;
         }
 
-        // Derive slug from title.
+        // Stage 14.2 — slug is auto-derived from the title; filename is
+        // either user-supplied (must end with .md) or defaults to
+        // '<slug>.md'. Final article path is
+        // content/posts/YYYY/MM/DD/<slug>/<filename>.md.
         var baseSlug = M.slugify(formData.title);
+        if (!baseSlug) {
+            setFormFieldError('title', '无法从标题派生 slug，请输入有效标题');
+            return;
+        }
+        var fnInput = (formData.filename || '').trim();
+        var baseFilename = fnInput || (baseSlug + '.md');
+        if (baseFilename.toLowerCase().slice(-3) !== '.md') baseFilename += '.md';
         var dateStr = formData.date;
         // Build the date directory path so we can list its existing entries.
         var datePath = (function () {
@@ -1795,7 +1911,7 @@ function updateEditCdnStatus() {
 
         // Step 1: resolve unique slug.
         findUniqueSlug(state.token, datePath, baseSlug).then(function (slug) {
-            var path = M.buildNewArticlePath(dateStr, slug);
+            var path = M.buildNewArticlePath(dateStr, slug, baseFilename);
             if (!path) {
                 throw new API.AdminError('VALIDATION', '无法生成路径');
             }
@@ -1803,6 +1919,8 @@ function updateEditCdnStatus() {
             // in sync if the user adds more images after slug resolution.
             state.newArticlePath = path;
             state.newArticleSlug = slug;
+            state.newArticleFilename = baseFilename;
+            state.newArticleFileBaseName = baseFilename.replace(/\.md$/i, '');
 
             // Step 2: conflict detection — getFile on the resolved path.
             return API.getFile(state.token, path).then(function () {
@@ -1811,7 +1929,7 @@ function updateEditCdnStatus() {
                 if (err && err.code === 'NOT_FOUND') {
                     // Good — no conflict. Dispatch create path.
                     if (state.pendingUploads.length > 0) {
-                        return submitNewArticleWithImages(path, content, commitMsg, slug);
+                        return submitNewArticleWithImages(path, content, commitMsg, slug, baseFilename);
                     }
                     return API.createFile(state.token, path, content, commitMsg);
                 }
@@ -1833,6 +1951,8 @@ function updateEditCdnStatus() {
             }
             state.newArticlePath = null;
             state.newArticleSlug = null;
+            state.newArticleFilename = null;
+            state.newArticleFileBaseName = null;
             resetForm();
             hideNewArticleForm();
             loadArticlesFresh();
@@ -1852,21 +1972,30 @@ function updateEditCdnStatus() {
      * For a brand new article, there is no existing remote target to conflict with;
      * we only need to ensure no two pending uploads produce the same name.
      *
-     * Stage 13.4 — slug leaf bundle layout: `path` is
-     * content/posts/YYYY/MM/DD/<slug>/index.md. All pending image targets
-     * are rewritten to <article_dir>/index.assets/<safeName> on commit
+     * Stage 14.2 — slug leaf bundle layout: `path` is
+     *   content/posts/YYYY/MM/DD/<slug>/<filename>.md
+     * All pending image targets are rewritten to
+     *   <article_dir>/<filename>.assets/<safeName>
      * to keep them consistent with the final article path even if the
      * user added images before the slug was resolved.
      */
-    function submitNewArticleWithImages(path, content, commitMsg, slug) {
+    function submitNewArticleWithImages(path, content, commitMsg, slug, filename) {
         var pending = state.pendingUploads.filter(function (p) { return p.formMode === 'new'; });
 
         // Compute the slug directory under which every image must live.
-        // path = "content/posts/YYYY/MM/DD/<slug>/index.md"
+        // path = "content/posts/YYYY/MM/DD/<slug>/<filename>.md"
         var lastSlash = path.lastIndexOf('/');
         var slugDir = path.substring(0, lastSlash); // "content/posts/YYYY/MM/DD/<slug>"
+        var fileBaseName = (filename || '').replace(/\.md$/i, '');
+        // Use the article's fileBaseName (carried via submitNewArticle)
+        // for the assets directory name. If filename is missing (e.g.
+        // older caller), fall back to deriving it from the article path.
+        if (!fileBaseName) {
+            var baseName = path.substring(lastSlash + 1);
+            fileBaseName = baseName.replace(/\.md$/i, '');
+        }
         for (var pi = 0; pi < pending.length; pi++) {
-            pending[pi].targetPath = slugDir + '/index.assets/' + pending[pi].safeName;
+            pending[pi].targetPath = slugDir + '/' + fileBaseName + '.assets/' + pending[pi].safeName;
         }
 
         // Total size cap.
@@ -1957,11 +2086,25 @@ function updateEditCdnStatus() {
             state.pendingUploads = state.pendingUploads.filter(function (p) {
                 return p.formMode !== 'new';
             });
-            var shortSha = result.commitSha.slice(0, 7);
+            // Stage 14.3 — Bug 2 fix. commitChanges contract is
+            // { commitSha, treeSha, rateLimit }. If commitChanges is
+            // upgraded to return additional fields in the future, this
+            // access stays safe. We fall back to '' (NOT a silent
+            // swallow) so the toast still surfaces the commit hash when
+            // available, and the form closes regardless.
+            var commitSha = (result && result.commitSha) || '';
+            var shortSha = commitSha.slice(0, 7);
             U.toast('✓ 已发布（含 ' + pending.length + ' 张图片，Commit ' + shortSha + '）', 'success', 6000);
             resetForm();
             hideNewArticleForm();
             loadArticlesFresh(); // Refresh tree to include the new article + images (bypass CDN cache)
+        }).catch(function (err) {
+            // Stage 14.3 — Bug 2 fix. submitNewArticleWithImages had no
+            // .catch() before; failures propagated as unhandled
+            // rejections. Surface them through the same banner as the
+            // outer submitNewArticle .catch().
+            handleApiError(err);
+            setFormBanner(formatError(err));
         });
     }
 
@@ -2102,10 +2245,11 @@ function updateEditCdnStatus() {
             if (!fn) continue;
             if (fn.finalSafeName === p.safeName) continue; // no change
             // Extract the original alt text from the original markdown insertion.
-            // Format: ![alt](index.assets/<safeName>)
-            var altMatch = p.markdown.match(/^!\[([^\]]*)\]\(index\.assets\/[^\)]+\)$/);
+            // Stage 14.2 — format is ![alt](<fileBaseName>.assets/<safeName>).
+            var esc = (p.fileBaseName || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            var altMatch = p.markdown.match(new RegExp('^!\\[([^\\]]*)\\]\\(' + esc + '\\.assets\\/[^\\)]+\\)$'));
             var alt = altMatch ? altMatch[1] : fn.finalSafeName.replace(/\.[^.]+$/, '');
-            var newMd = '![' + alt + '](index.assets/' + fn.finalSafeName + ')';
+            var newMd = '![' + alt + '](' + (p.fileBaseName || '') + '.assets/' + fn.finalSafeName + ')';
             var oldMd = p.markdown;
             var idx = result.indexOf(oldMd);
             if (idx >= 0) {
@@ -2131,12 +2275,15 @@ function updateEditCdnStatus() {
     /**
      * Stage 9B — Verify every pending's target is referenced in the body.
      * Returns { ok: true } or { ok: false, orphans: [{id, name}] }.
+     *
+     * Stage 14.2 — pending records carry fileBaseName; the reference
+     * key is "<fileBaseName>.assets/<safeName>".
      */
     function checkPendingReferences(body) {
         var orphans = [];
         for (var i = 0; i < state.pendingUploads.length; i++) {
             var p = state.pendingUploads[i];
-            var ref = 'index.assets/' + p.safeName;
+            var ref = (p.fileBaseName || '') + '.assets/' + p.safeName;
             if (body.indexOf(ref) < 0) {
                 orphans.push({ id: p.id, name: p.safeName });
             }
@@ -2161,24 +2308,50 @@ function updateEditCdnStatus() {
         return -1;
     }
 
-    function addPendingUpload(file, formMode, articlePathOrFilename) {
+function addPendingUpload(file, formMode, articlePathOrFilename) {
         var IU = window.ImageUpload;
         var validation = IU.validateImage(file);
         if (!validation.ok) {
             showImageError(formMode, validation.error);
             return null;
         }
-        // Determine target directory.
-        var isBundle = false;
+
+        // Stage 14.2 — every legal `.md` article may host image uploads.
+        // We derive the fileBaseName from the article path itself rather
+        // than asking "is this a bundle?". The legacy "standard Page
+        // Bundle" gate is gone.
+        var articlePath, fileBaseName;
         if (formMode === 'edit' && state.edit) {
-            isBundle = !!state.edit.isBundle;
+            articlePath = state.edit.path;
+            fileBaseName = state.edit.fileBaseName;
+            if (state.edit.isLoading || state.edit.isSaving) {
+                showImageError(formMode, '正在加载/保存中，请稍候再上传。');
+                return null;
+            }
+            if (!articlePath || !/\.md$/i.test(articlePath)) {
+                showImageError(formMode, '当前文件不是有效的 Markdown 文章，无法上传图片。');
+                return null;
+            }
         } else if (formMode === 'new') {
-            // For new article, allow upload only if filename === 'index.md'
-            // (which we treat as a Page Bundle by convention).
-            isBundle = (articlePathOrFilename === 'index.md');
-        }
-        if (!isBundle) {
-            showImageError(formMode, '当前文章不是标准 Page Bundle（index.md + index.assets/），暂不支持图片上传。');
+            // Stage 14.3 — Bug 1 fix. The new-article filename input
+            // drives the final path, but most users leave it empty and
+            // expect the default '<slug>.md' to be used. Without a
+            // fileBaseName the markdown link collapses to '![](.assets/...)'.
+            // Fall back to the title-derived slug so buildMarkdown always
+            // has a non-empty fileBaseName to anchor the assets dir.
+            var fn = (articlePathOrFilename || '').trim();
+            if (!fn) {
+                var titleFallback = (els.naTitle && els.naTitle.value || '').trim();
+                var slugFallback = M.slugify(titleFallback);
+                if (slugFallback) fn = slugFallback + '.md';
+            }
+            fileBaseName = fn ? fn.replace(/\.md$/i, '') : '';
+            // No path yet (it only exists once submitNewArticle resolves
+            // the slug). Use a sentinel so the pending targetPath can be
+            // rebuilt by submitNewArticleWithImages right before commit.
+            articlePath = null;
+        } else {
+            showImageError(formMode, '当前文件不是有效的 Markdown 文章，无法上传图片。');
             return null;
         }
 
@@ -2195,14 +2368,14 @@ function updateEditCdnStatus() {
         // Compute target path.
         var targetPath;
         if (formMode === 'edit' && state.edit) {
-            targetPath = IU.computeTargetPath(state.edit.path, safeName);
+            targetPath = IU.computeTargetPath(state.edit.path, fileBaseName, safeName);
         } else {
             // New: the article path is decided at submit time by
-            // submitNewArticle (slug leaf bundle layout). Use a sentinel
-            // target path here; submitNewArticleWithImages rewrites every
-            // pending target to the final slug directory immediately
-            // before commit. The sentinel lets us render the preview pane
-            // (previewUrl is the actual image source).
+            // submitNewArticle. Use a sentinel target path here;
+            // submitNewArticleWithImages rewrites every pending target to
+            // the final slug directory immediately before commit. The
+            // sentinel lets us render the preview pane (previewUrl is
+            // the actual image source).
             targetPath = '__PENDING_NEW_ARTICLE__/' + safeName;
         }
 
@@ -2216,6 +2389,7 @@ function updateEditCdnStatus() {
             file: file,
             originalName: file.name,
             safeName: safeName,
+            fileBaseName: fileBaseName,   // Stage 14.2 — used by renderPreview + checkPendingReferences
             type: file.type,
             size: file.size,
             previewUrl: previewUrl,
@@ -2236,6 +2410,51 @@ function updateEditCdnStatus() {
         if (p.previewUrl) {
             try { URL.revokeObjectURL(p.previewUrl); } catch (e) { /* ignore */ }
         }
+
+        // Stage 14.3 — Bug 3 fix. If we inserted a Markdown reference
+        // for this pending earlier, try to remove the exact snippet
+        // from the textarea so the body doesn't keep a dangling
+        // reference. We only act when:
+        //   - the snippet is still present verbatim (the user has not
+        //     edited the alt text or rearranged the line)
+        //   - the snippet appears once (so we don't accidentally
+        //     delete an unrelated user-typed reference with the same
+        //     content).
+        // Otherwise we surface a soft notice and leave the body alone.
+        if (p.markdownReference) {
+            var textarea = (p.formMode === 'edit') ? els.edBody : els.naBody;
+            if (textarea) {
+                var body = textarea.value || '';
+                var refSnippet = p.markdownReference;
+                var firstIdx = body.indexOf(refSnippet);
+                if (firstIdx >= 0) {
+                    // Make sure there isn't a second occurrence —
+                    // indexOf would only return the same position, so we
+                    // search for the snippet starting past the first hit.
+                    var secondIdx = body.indexOf(refSnippet, firstIdx + refSnippet.length);
+                    if (secondIdx === -1) {
+                        // Exactly one occurrence → safe to remove.
+                        var before = body.substring(0, firstIdx);
+                        var after = body.substring(firstIdx + refSnippet.length);
+                        textarea.value = before + after;
+                        try {
+                            var ev = new Event('input', { bubbles: true });
+                            textarea.dispatchEvent(ev);
+                        } catch (e) { /* ignore */ }
+                    } else {
+                        // Two or more — the user probably typed a
+                        // similar reference themselves. Don't auto-edit.
+                        try { U.toast('图片已从队列移除；正文存在多次相似引用，未自动删除，请检查。', 'info', 4500); } catch (e) { /* ignore */ }
+                    }
+                } else {
+                    // Snippet not found verbatim — the user has edited
+                    // it (different alt text) or deleted it manually.
+                    // Don't auto-edit; surface a soft notice.
+                    try { U.toast('图片已从队列移除；正文中的引用已变更或被删除，未自动删除，请检查。', 'info', 4500); } catch (e) { /* ignore */ }
+                }
+            }
+        }
+
         state.pendingUploads.splice(idx, 1);
         renderPendingList(p.formMode);
     }
@@ -2313,8 +2532,15 @@ function updateEditCdnStatus() {
             var pending = addPendingUpload(files[i], formMode, articlePathOrFilename);
             if (pending && textarea) {
                 // Insert Markdown at cursor and leave cursor after.
+                // Stage 14.2 — link uses "<fileBaseName>.assets/<safeName>"
+                // which is the article's own assets directory regardless of
+                // layout. fileBaseName is carried on the pending record.
+                // Stage 14.3 — also remember the exact snippet we inserted
+                // so removePendingUpload can take it back out without
+                // touching unrelated user-typed references.
                 var IU = window.ImageUpload;
-                var md = IU.buildMarkdown(pending.safeName);
+                var md = IU.buildMarkdown(pending.fileBaseName || '', pending.safeName);
+                pending.markdownReference = md;
                 IU.insertAtCursor(textarea, md);
             }
         }
@@ -2326,12 +2552,17 @@ function updateEditCdnStatus() {
             btn = els.naInsertImageBtn;
             input = els.naImageInput;
             textarea = els.naBody;
-            articlePathOrFilename = els.naFilename ? els.naFilename.value : 'index.md';
+            // For new articles the user may override the filename via the
+            // "Filename" input; we read it live so the inserted markdown
+            // link matches whatever is current in the form at click time.
+            articlePathOrFilename = els.naFilename ? els.naFilename.value : '';
         } else {
             btn = els.edInsertImageBtn;
             input = els.edImageInput;
             textarea = els.edBody;
-            articlePathOrFilename = null; // not used; state.edit.isBundle is used
+            // edit form reads fileBaseName directly from state.edit; the
+            // articlePathOrFilename argument is unused here.
+            articlePathOrFilename = null;
         }
         if (!btn || !input) return;
 
@@ -2402,7 +2633,9 @@ function updateEditCdnStatus() {
         for (var i = 0; i < state.pendingUploads.length; i++) {
             var p = state.pendingUploads[i];
             if (p.formMode !== 'new') continue;
-            var ref = 'index.assets/' + p.safeName;
+            // Stage 14.2 — pending record carries fileBaseName; the
+            // pending image link is "<fileBaseName>.assets/<safeName>".
+            var ref = (p.fileBaseName || '') + '.assets/' + p.safeName;
             var placeholder = 'PENDINGIMG:' + i;
             processed = processed.split(ref).join(placeholder);
         }

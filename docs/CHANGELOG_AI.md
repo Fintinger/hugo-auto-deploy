@@ -1669,3 +1669,164 @@ V1 已收官，需要把所有分散在多次会话中的架构/安全/数据完
 ---
 
 ---
+## 2026-08-30
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 13.5 — Stage 14.1 任务0：Admin 文章列表正确支持 slug leaf bundle + 切换文章 race 守卫：
+
+1. **article.js parseTree 新增 `isLegacy` 字段**
+   - legacy 文章：`isLegacy: true`
+   - slug leaf bundle：`isLegacy: false`
+   - Article 仍统一提供 `path / filename / directory / year / month / day / slug / isLegacy / isIndex / isBundle / assetsPath / sha / size`
+
+2. **article.js sortArticles 排序键改为 slug/filename A-Z**
+   - 旧逻辑按 `filename` 排：slug bundle 都用 `index.md`，看不出排序
+   - 新逻辑按 `slug || filename` 排：slug bundle 按 slug A-Z，legacy 按 filename A-Z
+
+3. **app.js buildFileNode 显示 `slug || filename`**
+   - slug bundle 显示 slug（如 `hugo-admin-github-api-优化测试`）
+   - legacy 显示 filename（如 `index.md`、`other.md`）
+   - 不调 getFile 取 front matter title（保持 1 个 Tree API 请求，不退化成 N+1）
+
+4. **app.js loadArticleForEdit**
+   - 新增 `editGeneration` 计数器（state.editGeneration）
+   - 进入函数先 `++state.editGeneration`，记录 gen
+   - `API.getFile().then()` 里 `if (gen !== state.editGeneration) return` —— 丢弃 stale 响应
+   - 从 `state.articles` 查找 article record，填充 `state.edit.isBundle / assetsPath / directory / slug` —— 修复上一轮 P0-A：编辑 bundle 文章上传图片永远失败的 bug
+
+5. **app.js updatePathPreview 改用 buildNewArticlePath**
+   - 旧：显示 `content/posts/YYYY/MM/DD/index.md`（与实际不一致）
+   - 新：显示 `content/posts/YYYY/MM/DD/<slug>/index.md`，slug 默认从 title 派生，用户可在「Slug（高级）」输入框覆盖
+
+6. **app.js submitNewArticle 改 slug override 逻辑**
+   - 移除 `validateArticleFilename` 调用（filename 字段不再当作文件名）
+   - `formData.filename` 现在是 slug override
+   - `baseSlug = overrideSlug || M.slugify(formData.title)`
+   - 始终生成 `<slug>/index.md`（不再允许自定义文件名）
+
+7. **app.js collectFormData / resetForm 调整**
+   - `filename` 字段默认值从 `'index.md'` 改为 `''`（slug override 为空时从 title 派生）
+
+8. **index.html filename 输入框改名**
+   - label: `文件名` → `Slug（高级）`
+   - placeholder: `index.md` → `（留空则自动从标题派生）`
+   - hint: 说明 slug 决定路径，留空=自动，同 slug 自动加 -2 / -3
+
+### 修改文件
+
+- `static/admin/js/article.js`：parseTree 新增 isLegacy；sortArticles 排序键改 slug/filename
+- `static/admin/js/app.js`：
+  - state 加 editGeneration: 0
+  - loadArticleForEdit 加 generation 守卫 + 从 state.articles 填充 isBundle/assetsPath/directory/slug
+  - buildFileNode 显示 slug || filename
+  - updatePathPreview 用 buildNewArticlePath(date, slug)
+  - submitNewArticle 改 slug override 处理（移除 validateArticleFilename）
+  - collectFormData filename 默认 ''
+  - resetForm filename 默认 ''
+- `static/admin/index.html`：filename 输入框 label/placeholder/hint 改 Slug（高级）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+GitHub 仓库已用 slug leaf bundle 存储新文章（`content/posts/YYYY/MM/DD/<slug>/index.md`），但 Admin UI 仍按旧模型显示（三个 `index.md` 节点）。本次修复让 Article Model + UI 显示层 + 新建表单 + 切换文章守卫全部适配新结构，保持 1 个 Tree API 请求设计不引入 N+1 title hydrate。
+
+### 测试结果
+
+- `node --check` 全部 7 个 admin JS：通过
+- `node tools/admin-static-check.js`：**0 失败**（含 Hugo BUILD_OK + SRI 校验 + no console/eval/force:true）
+- 集成测试 11 类（41 assertions，41 pass / 0 fail）：
+  - Test 1: parsePath legacy → Y/M/D + slug=null + filename=index.md + directory=dateDir
+  - Test 2: parsePath slug bundle → slug=<slug> + filename=index.md + directory=slugDir（禁止 filename='slug/index.md'）
+  - Test 3: parseTree mixed structure → 3 文章（1 legacy + 2 slug bundle），assetsPath 正确
+  - Test 4: buildDirectoryTree same-day → 3 文章挂在 day 数组（不嵌套 slug 子目录）
+  - Test 5: article click path → path 是完整 5 段/4 段路径
+  - Test 6: slug conflict → 自动 -4 后缀
+  - Test 7: delete scope legacy → articleDir=dateDir, assetsPrefix=date/index.assets
+  - Test 8: delete scope slug bundle → articleDir=slugDir, 兄弟 slug 不受影响
+  - Test 9: editGeneration race → A 慢响应丢弃，B 后到时正确
+  - Test 10: image target path → legacy: date/index.assets/, slug: slug/index.assets/
+  - Test 11: buildFileNode display priority → slug 显示 slug，legacy 显示 filename
+
+### 注意事项
+
+- AI 已验证：node --check + admin-static-check + Hugo build + 集成测试 41/41
+- 用户应验证（生产）：
+  1. Hard refresh Ctrl+Shift+R 清缓存
+  2. 列表 2026/09/30 下应显示：`hugo-admin-github-api-优化测试`、`第二篇测试文章`、`图片上传测试`（不再三个 `index.md`）
+  3. 点击文章 → 切换预览无 stale
+  4. 新建文章 → 路径预览实时显示 `<slug>/index.md`
+  5. 编辑 bundle 文章 → 可上传图片到 `<slug>/index.assets/`
+  6. 删除 slug 文章 → 整个 slug 目录（含 `index.assets/`）一并清除，不影响兄弟 slug
+- 遗留问题：测试残留文章（30+ 条 `post: 测试1/2/draft`）需用户在 Admin 中用「删除」清理
+- 未自动 commit——按用户要求
+
+---## 2026-08-30
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 13.7 — Stage 14.3：四个 P0 Bug 修复（基于 Stage 14.2 实际使用发现）
+
+1. **Bug 1：图片引用 `.assets/xxx`**
+   - **根因**：`addPendingUpload` 新文章分支（app.js:2241-2248）`articlePathOrFilename` 为空时（用户没填 filename）`fileBaseName = ''`，传给 `buildMarkdown(fileBaseName, safeName)` → 输出 `![](.assets/...)`。
+   - **修复**：filename 为空时 fallback `M.slugify(els.naTitle.value) + '.md'`。
+
+2. **Bug 2：偶发 `Cannot read properties of undefined (reading 'commitSha')`**
+   - **根因**：
+     - `github-api.js commitChanges` 缺 `if (!newCommitSha) throw` 防御，边界场景 `commitRes.data.sha = undefined` 时直接 return `{commitSha: undefined, ...}`
+     - `app.js:2009` 4 个 `result.commitSha` 访问点中**唯一**无 `\|\| ''` 兜底
+     - `submitNewArticleWithImages` 整个 promise 链无 `.catch()`，rejection 变 unhandled
+   - **修复**：
+     - `commitChanges` contract guard：缺 `newCommitSha`/`newTreeSha` 抛 `AdminError('UNKNOWN', '...')`
+     - `app.js:2009` 加 `(result && result.commitSha) \|\| ''` 兜底
+     - `submitNewArticleWithImages` 加 `.catch(err) { handleApiError + setFormBanner }`
+
+3. **Bug 3：删除 pending 不同步 textarea**
+   - **根因**：`removePendingUpload` 只清理队列和 object URL，**完全不碰 textarea**。`pending` 对象也没保存当初插入的 Markdown 片段。
+   - **修复**：
+     - `handleImageFiles` 存 `pending.markdownReference = md`
+     - `removePendingUpload` 4 场景：
+       - 出现 1 次 verbatim → 自动删
+       - 出现 0 次（用户改过或自删）→ toast 提示
+       - 出现 ≥2 次（用户手动写了相似引用）→ toast 提示，**禁止 replaceAll**
+
+4. **Bug 4：文章树不显示 slug 层**
+   - **根因**：`buildDirectoryTree` 把所有 article 扁平放入 `byYear[year][month][day] = [...]`，没有按 layout 分组。`buildDayNode` 渲染时直接列 articles。
+   - **修复**：
+     - `buildDirectoryTree` 新增双 bucket：
+       - `legacyByYearMonthDay[ymd] = [Article]`
+       - `slugByYearMonthDay[ymd][slug] = [Article]`
+     - `buildDayNode` 按 legacy → slug 顺序渲染
+     - 新增 `buildSlugGroupNode(slug, articlesInGroup)`：渲染可折叠 slug 父节点，**点击只展开/折叠**（不调 `selectArticle`）
+     - 只有 `buildFileNode` 内文章点击才进编辑
+
+### 修改文件
+
+- `static/admin/js/app.js`：addPendingUpload fallback / handleImageFiles 存 markdownReference / removePendingUpload 4 场景 / line 2009 兜底 / submitNewArticleWithImages .catch / buildDayNode 改 / 新增 buildSlugGroupNode
+- `static/admin/js/article.js`：buildDirectoryTree 双 bucket
+- `static/admin/js/github-api.js`：commitChanges contract guard
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- `node --check` 全部 7 个 admin JS：通过
+- `node tools/admin-static-check.js`：**0 失败**
+- `.\hugo.exe`：BUILD_OK 387ms
+- 集成测试 10+ 类 / 45 pass / 0 fail
+- 安全扫描：0 console / 0 eval / 0 force:true / 0 真实 token（force:true 仅在注释中）
+
+### 待用户 E2E
+
+1. Hard refresh `Ctrl+Shift+R` 清缓存
+2. 新建 `title='Sort' date='2026-09-30'` → 选 favicon.jpg → 正文插入 `![favicon](Sort.assets/favicon.jpg)`（不再 `.assets/`）
+3. 连续 20 次新建（点发布 → 关表单 → 改 title 再发布）→ **不再**出现 `commitSha undefined`
+4. 删除 pending → 正文同步（无修改） / toast 提示（用户改过或已删）
+5. 左侧树 2026/09/30：先列 `index`（legacy）→ `sort` slug 父节点（可折叠）→ 展开显示 `Sort` → `other` slug 父节点（可折叠）→ 展开显示 `other`
+6. 点击 `sort` 父节点不打开编辑；只点击 `Sort` 文件节点才进入编辑
+7. 搜索 `sort` 找到 `sort/Sort.md`；搜索 `Sort` 找到 `sort/Sort.md` 和 `2021/06/10/Sort.md`
+
+---

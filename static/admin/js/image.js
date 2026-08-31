@@ -91,28 +91,41 @@
     }
 
     /**
-     * Compute the target repo-relative path for a new image in a Page Bundle.
-     *   articlePath: "content/posts/2026/08/30/index.md"
-     *   safeName:    "screenshot.png"
-     * Returns: "content/posts/2026/08/30/index.assets/screenshot.png"
+     * Compute the target repo-relative path for a new image.
+     * Stage 14.2 — assets directory is named after the article's
+     * filename with a `.assets/` suffix, regardless of layout.
+     *
+     *   articlePath:    "content/posts/2026/08/30/Sort.md"
+     *   fileBaseName:   "Sort"                    (filename without .md)
+     *   safeName:       "screenshot.png"
+     * Returns:         "content/posts/2026/08/30/Sort.assets/screenshot.png"
+     *
+     * Works the same way for legacy and slug layouts because
+     * fileBaseName is just the basename of the article file.
+     *
      * Returns null if inputs are invalid.
      */
-    function computeTargetPath(articlePath, safeName) {
+    function computeTargetPath(articlePath, fileBaseName, safeName) {
         if (!articlePath || !safeName) return null;
+        var fb = fileBaseName || '';
         var sepIdx = articlePath.lastIndexOf('/');
         if (sepIdx < 0) return null;
         var dir = articlePath.substring(0, sepIdx);
-        return dir + '/index.assets/' + safeName;
+        return dir + '/' + fb + '.assets/' + safeName;
     }
 
     /**
      * Build the Markdown reference text for a pending image.
-     * Format: ![<alt>](index.assets/<filename>)
-     * The path is relative to the article file (which lives in the same dir).
+     * Format: ![<alt>](<fileBaseName>.assets/<filename>)
+     *
+     * Stage 14.2 — the assets directory in the Markdown link is the
+     * article's filename (no .md) + ".assets/", so the path is
+     * correct relative to the article file regardless of layout.
      */
-    function buildMarkdown(safeName) {
+    function buildMarkdown(fileBaseName, safeName) {
         var alt = safeName.replace(/\.[^.]+$/, '');
-        return '![' + alt + '](index.assets/' + safeName + ')';
+        var fb = fileBaseName || '';
+        return '![' + alt + '](' + fb + '.assets/' + safeName + ')';
     }
 
     /**
