@@ -349,25 +349,27 @@
     }
 
     /**
-     * Build the canonical new-article path. Stage 14.2:
-     *   content/posts/YYYY/MM/DD/<slug>/<filename>.md
+     * Build a slug leaf bundle path for a brand-new article.
+     *   content/posts/YYYY/MM/DD/<slug>/index.md
      *
-     * If filename is omitted, defaults to '<slug>.md'. The .md suffix
-     * is appended automatically if missing.
+     * Stage 14.4B — the article file is always `index.md` regardless of
+     * what the user types in the filename input. Hugo 0.83.0 only
+     * publishes `index.assets/` (not `<filename>.assets/`) so the
+     * assets directory has to match the article file basename to be
+     * recognised as page resources. Always-`index.md` is the only way
+     * to keep the assets convention working without dropping user input.
      */
-    function buildNewArticlePath(date, slug, filename) {
+    function buildNewArticlePath(date, slug) {
         var parts = parseDateString(typeof date === 'string' ? date : formatLocalDate(date));
         if (!parts) return '';
         var s = (slug && String(slug).trim()) || '';
         if (!s) return '';
-        var fn = (filename && String(filename).trim()) || (s + '.md');
-        if (fn.toLowerCase().slice(-3) !== '.md') fn += '.md';
         return 'content/posts/' +
             parts.year + '/' +
             String(parts.month).padStart(2, '0') + '/' +
             String(parts.day).padStart(2, '0') +
             '/' + s +
-            '/' + fn;
+            '/index.md';
     }
 
     /**

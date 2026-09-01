@@ -92,40 +92,38 @@
 
     /**
      * Compute the target repo-relative path for a new image.
-     * Stage 14.2 — assets directory is named after the article's
-     * filename with a `.assets/` suffix, regardless of layout.
+     * Stage 14.4B — assets directory is always `index.assets/`.
      *
-     *   articlePath:    "content/posts/2026/08/30/Sort.md"
-     *   fileBaseName:   "Sort"                    (filename without .md)
-     *   safeName:       "screenshot.png"
-     * Returns:         "content/posts/2026/08/30/Sort.assets/screenshot.png"
+     *   articlePath:   "content/posts/2026/09/30/sort/index.md" (slug layout)
+     *                or "content/posts/2021/06/10/Sort.md"     (legacy layout)
+     *   safeName:      "favicon.jpg"
+     * Returns:        "<dir>/index.assets/favicon.jpg"
      *
-     * Works the same way for legacy and slug layouts because
-     * fileBaseName is just the basename of the article file.
+     * Stage 14.4B verification: Hugo 0.83.0 ONLY publishes
+     * `index.assets/`. `<filename>.assets/` is silently dropped.
+     * Therefore every image — regardless of layout — must go to
+     * `index.assets/`. For legacy `<filename>.md` the sibling
+     * `index.assets/` will be an orphan assets dir, but that is
+     * acceptable: legacy articles are not allowed to upload images
+     * (the addPendingUpload guard rejects them).
      *
      * Returns null if inputs are invalid.
      */
-    function computeTargetPath(articlePath, fileBaseName, safeName) {
+    function computeTargetPath(articlePath, safeName) {
         if (!articlePath || !safeName) return null;
-        var fb = fileBaseName || '';
         var sepIdx = articlePath.lastIndexOf('/');
         if (sepIdx < 0) return null;
         var dir = articlePath.substring(0, sepIdx);
-        return dir + '/' + fb + '.assets/' + safeName;
+        return dir + '/index.assets/' + safeName;
     }
 
     /**
      * Build the Markdown reference text for a pending image.
-     * Format: ![<alt>](<fileBaseName>.assets/<filename>)
-     *
-     * Stage 14.2 — the assets directory in the Markdown link is the
-     * article's filename (no .md) + ".assets/", so the path is
-     * correct relative to the article file regardless of layout.
+     * Format: ![<alt>](index.assets/<filename>)
      */
-    function buildMarkdown(fileBaseName, safeName) {
+    function buildMarkdown(safeName) {
         var alt = safeName.replace(/\.[^.]+$/, '');
-        var fb = fileBaseName || '';
-        return '![' + alt + '](' + fb + '.assets/' + safeName + ')';
+        return '![' + alt + '](index.assets/' + safeName + ')';
     }
 
     /**

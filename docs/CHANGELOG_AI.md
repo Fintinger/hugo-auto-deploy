@@ -1829,4 +1829,98 @@ GitHub 仓库已用 slug leaf bundle 存储新文章（`content/posts/YYYY/MM/DD
 6. 点击 `sort` 父节点不打开编辑；只点击 `Sort` 文件节点才进入编辑
 7. 搜索 `sort` 找到 `sort/Sort.md`；搜索 `Sort` 找到 `sort/Sort.md` 和 `2021/06/10/Sort.md`
 
+---## 2026-08-30
+
+- 模型：minimax-cn/MiniMax-M3
+
+### 修改内容
+
+阶段 13.8 — Stage 14.4B：最终新文章架构验证 + commitSha 真根因修复
+
+1. **Hugo 0.83.0 实测验证**
+   - **方案 A** `<slug>/index.md` + `<slug>/index.assets/`：**publish 成功**（实测 `public/p/admin-bundle-test-a/index.html` + `index.assets/test.png` 都存在）
+   - **方案 B** `<slug>/.md` + `<slug>/.assets/`：**不 publish**（实测 `public/p/admin-bundle-test-b/Test.assets/` NOT FOUND）
+   - 原因：Hugo 0.83.0 page resources 匹配只支持约定名 `index.assets` / `<filename>.files` / `<filename>.media`；`<filename>.assets/` **不是** 约定
+   - **`render-image.html` 用 `.Destination | safeURL`，不做 Resources resolve**——Markdown `![alt](src)` 原样输出 src，依赖 GitHub publish 把 assets 放到 public
+
+2. **最终目录结构（唯一推荐）**
+   ```
+   content/posts/YYYY/MM/DD/<slug>/
+   ├── index.md            ← 永远叫 index.md
+   └── index.assets/       ← 永远叫 index.assets/
+   ```
+   Markdown 引用：永远 `![alt](index.assets/foo.png)`
+
+3. **旧文章结构完全保留**
+   - 4 段 legacy `<file>.md` 不迁移、不重命名（AGENTS.md 红线）
+   - legacy 文章**不支持图片上传**（addPendingUpload 检测 `state.edit.layout === 'legacy'` 报错："此文章是 legacy 4 段结构，Hugo 0.83.0 不支持 <file>.assets/"）
+   - legacy 4 段多文件同目录（如 2021/05/22 BST.md + index.md）继续可编辑，但只 publish 一篇——这是 Hugo 既有行为，AI 不改
+
+4. **真正根因 commitSha undefined**（Stage 14.3 加 `|| ''` 兜底**没**找到根因）
+   - **根因**：`submitNewArticleWithImages` 内部 `.then(function(result) {...})` **没有 return** 任何值，导致 `submitNewArticleWithImages` 返回 `undefined`
+   - **链**：`submitNewArticle` line 1939 `.then(function(result) {...})` 拿到 `result === undefined` → line 1942 `result.commitSha.slice(0, 7)` → **`undefined.commitSha` 抛错**
+   - **实测模拟**（diagnose-fm.js Test J）：未加 `return result` 抛错；加 `return result` 正常
+   - **真正修复**（不靠 `|| ''` 掩盖）：`submitNewArticleWithImages` line 2096 加 `return result;`
+   - Stage 14.3 的 `\|\| ''` 兜底**误报**修复——只保护了内部 toast line 2095（短路），没保护外层 line 1942
+
+5. **修改文件清单**
+   - `static/admin/js/article.js`：`buildNewArticlePath(date, slug)` 永远 `<slug>/index.md`（去掉 filename 参数）；保留 Stage 14.2 parsePath/parseTree/sortArticles/fileBaseName
+   - `static/admin/js/image.js`：`computeTargetPath(articlePath, safeName)` 永远 `<dir>/index.assets/<safeName>`（去掉 fileBaseName 参数）；`buildMarkdown(safeName)` 永远 `![alt](index.assets/<safeName>)`（去掉 fileBaseName 参数）
+   - `static/admin/js/app.js`：
+     - `submitNewArticle` 永远 `index.md`（忽略 filename 字段）；外层 line 1942 加 `(result && result.commitSha || '')` 防御
+     - **`submitNewArticleWithImages` 内部 `.then` 块末尾加 `return result;`（真正根因修复）**；targetPath 改用 `<slugDir>/index.assets/<safeName>`
+     - `addPendingUpload`：edit 分支从 `state.edit.fileBaseName` 派生（默认 `'index'`），legacy 文章报错拒绝；new 分支永远 `'index'`；edit articlePath 直接传给 computeTargetPath
+     - `checkPendingReferences` / `updateBodyReferencesForFinalNames` / `renderPreview` / `renderEditPreview` 替换键改为 `index.assets/<safeName>`
+     - `updatePathPreview` 用 `M.buildNewArticlePath(dateStr, slug)`（单参数）
+   - `static/admin/index.html` filename 输入框 label `文件名` → `Slug（高级）`；placeholder `（留空则自动使用 <slug>.md）` → `（留空则按标题自动派生）`；hint 说明 `index.md` + `index.assets/` 固定
+
+### 测试结果
+
+- `node --check` 全部 7 个 admin JS：通过
+- `node tools/admin-static-check.js`：**0 失败**（Hugo BUILD_OK + SRI 校验）
+- `.\hugo.exe`：BUILD_OK 428ms
+- 集成测试 **40 pass / 0 fail**（Test A-M）：
+ - Test A: buildNewArticlePath → `<slug>/index.md`（sort/长 slug/CJK slug 都对）
+ - Test B: parseTree 3 文章 + 正确 layout/fileBaseName/assetsPath
+ - Test C: computeTargetPath → `<dir>/index.assets/<safeName>`（slug + legacy + 历史 Sort 都覆盖）
+ - Test D: buildMarkdown → `![alt](index.assets/<safeName>)`
+ - Test E: parsePath 4/5 段
+ - Test F: sortArticles 同日 filename A-Z
+ - Test G: buildDirectoryTree dual bucket
+ - Test H: slug 冲突 `-2`/`-3` 自动后缀
+ - Test I: **commitSha 20× stress 无错**
+ - Test J: **真正根因验证**——未加 `return result` 抛错，加了正常
+ - Test K: Hugo render-image.html 不做 Resources resolve
+ - Test L: Hugo page resources 约定名（index.assets/files/media）
+ - Test M: Hugo build 实测 A publish / B 不 publish
+
+### 用户需要 E2E
+
+1. Hard refresh `Ctrl+Shift+R`
+2. 新建 `title='Sort' date='2026-09-30'`（filename 字段**留空**）→ 路径预览 `content/posts/2026/09/30/sort/index.md`
+3. 上传 favicon.jpg → 正文 `![favicon](index.assets/favicon.jpg)`
+4. 发布 → GitHub 创建 `sort/index.md` + `sort/index.assets/favicon.jpg`
+5. Vercel 部署 → 访问 `blog.archai.space/p/sort/` → 图片 200 ✓
+6. 同一目录再建 `other` → 两篇独立显示在目录树
+7. 删除 sort → 整个 sort 目录消失，other 保留
+8. 编辑 legacy `2021/06/10/Sort.md` → 仍可保存（不传图）
+9. 上传图到 legacy → 报明确错误，不静默失败
+
+### 仍存在的已 commit 错误文章
+
+`content/posts/2026/08/31/hugo-admin优化/hugo-admin优化.md` + `hugo-admin优化.assets/favicon.jpg`
+`content/posts/2026/08/31/测试2/sort.md` + `测试2/sort.assets/favicon.jpg`
+
+**这两篇**用 `<filename>.assets/` 错误结构，Hugo 0.83.0 不 publish 它们。用户**自己**决定是否手动迁移（AI 不动 content/）。
+
+### 禁止事项
+
+- ❌ 修改 themes/PaperMod
+- ❌ 修改现有 content/posts 文章
+- ❌ 迁移/重命名旧文章
+- ❌ 自动 commit/push
+- ❌ 用 `|| ''` 掩盖 commitSha 错误（line 1942 是 UI 防御层，不是 API 修复）
+
+**未自动 commit**——按用户要求。
+
 ---

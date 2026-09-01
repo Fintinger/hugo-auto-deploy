@@ -1316,16 +1316,14 @@ function loadArticleForEdit(path) {
             return;
         }
         // Pre-process: replace pending-image refs with safe markers so marked.js
-        // does not try to resolve them as URLs. Stage 14.2 — the assets
-        // directory name is derived from the article's fileBaseName
-        // (carried on the pending record), so the substitution key is
-        // "<fileBaseName>.assets/<safeName>".
+        // does not try to resolve them as URLs. Stage 14.4B — assets are
+        // always in `index.assets/`, so the substitution key is fixed.
         var bodyValue = els.edBody ? els.edBody.value : '';
         var processed = bodyValue;
         for (var i = 0; i < state.pendingUploads.length; i++) {
             var p = state.pendingUploads[i];
             if (p.formMode !== 'edit') continue;
-            var ref = (p.fileBaseName || '') + '.assets/' + p.safeName;
+            var ref = 'index.assets/' + p.safeName;
             var placeholder = 'PENDINGIMG:' + i;
             // Replace all occurrences of this ref in the markdown source.
             processed = processed.split(ref).join(placeholder);
@@ -1762,19 +1760,17 @@ function updateEditCdnStatus() {
 function updatePathPreview() {
         if (!els.naPathPreview) return;
         var dateStr = (els.naDate && els.naDate.value) || M.formatLocalDate(new Date());
-        // Stage 14.2 — slug is auto-derived from the title; filename
-        // defaults to '<slug>.md' but can be overridden (e.g. 'Sort.md').
-        // Final path is content/posts/YYYY/MM/DD/<slug>/<filename>.md and
-        // the assets directory is '<filename>.assets/' (Stage 14.2 §10).
+        // Stage 14.4B — final article file is always `index.md`; assets
+        // directory is always `index.assets/`. The form's filename input
+        // is preserved as an advanced-override hook but does NOT affect
+        // the written path. The slug still comes from the title.
         var title = (els.naTitle && els.naTitle.value || '').trim();
         var slug = M.slugify(title);
         if (!slug) {
             els.naPathPreview.textContent = '— 请先输入标题 —';
             return;
         }
-        var fnInput = (els.naFilename && els.naFilename.value || '').trim();
-        var filename = fnInput || (slug + '.md');
-        els.naPathPreview.textContent = M.buildNewArticlePath(dateStr, slug, filename) || '—';
+        els.naPathPreview.textContent = M.buildNewArticlePath(dateStr, slug) || '—';
     }
 
     function markDirty() {
@@ -1787,10 +1783,10 @@ function collectFormData() {
         return {
             title: (els.naTitle && els.naTitle.value || '').trim(),
             date: (els.naDate && els.naDate.value) || '',
-            // Stage 14.1 — the form field with id na-filename now carries
-            // an optional slug override (no .md suffix). The article is
-            // always written as <slug>/index.md; this value only seeds
-            // the base slug passed to findUniqueSlug.
+            // Stage 14.4B — `filename` field is no longer read by the
+            // submit path. We still keep the element on the form so
+            // legacy UI / future advanced override hooks can read it,
+            // but `index.md` is the only file name we ever write.
             filename: ((els.naFilename && els.naFilename.value) || '').trim(),
             categories: M.parseCategoriesInput(els.naCategories && els.naCategories.value || ''),
             tags: M.parseTagsInput(els.naTags && els.naTags.value || ''),
@@ -1870,18 +1866,17 @@ function collectFormData() {
             return;
         }
 
-        // Stage 14.2 — slug is auto-derived from the title; filename is
-        // either user-supplied (must end with .md) or defaults to
-        // '<slug>.md'. Final article path is
-        // content/posts/YYYY/MM/DD/<slug>/<filename>.md.
+        // Stage 14.4B — slug is auto-derived from the title. The article
+        // file is ALWAYS `index.md`; the form's filename input is
+        // ignored because Hugo 0.83.0 only publishes `index.assets/`
+        // (not `<filename>.assets/`) and the assets directory name
+        // has to match the article basename to be recognised as page
+        // resources.
         var baseSlug = M.slugify(formData.title);
         if (!baseSlug) {
             setFormFieldError('title', '无法从标题派生 slug，请输入有效标题');
             return;
         }
-        var fnInput = (formData.filename || '').trim();
-        var baseFilename = fnInput || (baseSlug + '.md');
-        if (baseFilename.toLowerCase().slice(-3) !== '.md') baseFilename += '.md';
         var dateStr = formData.date;
         // Build the date directory path so we can list its existing entries.
         var datePath = (function () {
@@ -1911,7 +1906,7 @@ function collectFormData() {
 
         // Step 1: resolve unique slug.
         findUniqueSlug(state.token, datePath, baseSlug).then(function (slug) {
-            var path = M.buildNewArticlePath(dateStr, slug, baseFilename);
+            var path = M.buildNewArticlePath(dateStr, slug);
             if (!path) {
                 throw new API.AdminError('VALIDATION', '无法生成路径');
             }
@@ -1919,8 +1914,6 @@ function collectFormData() {
             // in sync if the user adds more images after slug resolution.
             state.newArticlePath = path;
             state.newArticleSlug = slug;
-            state.newArticleFilename = baseFilename;
-            state.newArticleFileBaseName = baseFilename.replace(/\.md$/i, '');
 
             // Step 2: conflict detection — getFile on the resolved path.
             return API.getFile(state.token, path).then(function () {
@@ -1929,7 +1922,7 @@ function collectFormData() {
                 if (err && err.code === 'NOT_FOUND') {
                     // Good — no conflict. Dispatch create path.
                     if (state.pendingUploads.length > 0) {
-                        return submitNewArticleWithImages(path, content, commitMsg, slug, baseFilename);
+                        return submitNewArticleWithImages(path, content, commitMsg, slug);
                     }
                     return API.createFile(state.token, path, content, commitMsg);
                 }
@@ -1937,10 +1930,15 @@ function collectFormData() {
                 throw err;
             });
         }).then(function (result) {
-            // Success.
+            // Success. Stage 14.4B — `result` may be undefined if the
+            // inner chain (submitNewArticleWithImages) didn't return
+            // anything. We guard the access with `result && ...` so the
+            // toast works for both paths. The actual root-cause fix is
+            // adding `return result;` inside submitNewArticleWithImages'
+            // .then() block; this guard is a defence in depth.
             state.formDirty = false;
-            var shortSha = (result.commitSha || '').slice(0, 7);
-            var htmlUrl = result.htmlUrl || '';
+            var shortSha = (result && result.commitSha || '').slice(0, 7);
+            var htmlUrl = (result && result.htmlUrl) || '';
             var action = publishMode ? '发布' : '草稿已保存';
             var message =
                 '✓ ' + action + '：' + (state.newArticlePath || '') +
@@ -1951,8 +1949,6 @@ function collectFormData() {
             }
             state.newArticlePath = null;
             state.newArticleSlug = null;
-            state.newArticleFilename = null;
-            state.newArticleFileBaseName = null;
             resetForm();
             hideNewArticleForm();
             loadArticlesFresh();
@@ -1972,30 +1968,23 @@ function collectFormData() {
      * For a brand new article, there is no existing remote target to conflict with;
      * we only need to ensure no two pending uploads produce the same name.
      *
-     * Stage 14.2 — slug leaf bundle layout: `path` is
-     *   content/posts/YYYY/MM/DD/<slug>/<filename>.md
-     * All pending image targets are rewritten to
-     *   <article_dir>/<filename>.assets/<safeName>
-     * to keep them consistent with the final article path even if the
-     * user added images before the slug was resolved.
+     * Stage 14.4B — assets directory is always `index.assets/` so the
+     * fileBaseName is hard-coded to `index`. The article path itself
+     * is `<slug>/index.md`; the caller (submitNewArticle) is responsible
+     * for building it via M.buildNewArticlePath(date, slug).
      */
-    function submitNewArticleWithImages(path, content, commitMsg, slug, filename) {
+    function submitNewArticleWithImages(path, content, commitMsg, slug) {
         var pending = state.pendingUploads.filter(function (p) { return p.formMode === 'new'; });
 
         // Compute the slug directory under which every image must live.
-        // path = "content/posts/YYYY/MM/DD/<slug>/<filename>.md"
+        // path = "content/posts/YYYY/MM/DD/<slug>/index.md"
         var lastSlash = path.lastIndexOf('/');
         var slugDir = path.substring(0, lastSlash); // "content/posts/YYYY/MM/DD/<slug>"
-        var fileBaseName = (filename || '').replace(/\.md$/i, '');
-        // Use the article's fileBaseName (carried via submitNewArticle)
-        // for the assets directory name. If filename is missing (e.g.
-        // older caller), fall back to deriving it from the article path.
-        if (!fileBaseName) {
-            var baseName = path.substring(lastSlash + 1);
-            fileBaseName = baseName.replace(/\.md$/i, '');
-        }
+
         for (var pi = 0; pi < pending.length; pi++) {
-            pending[pi].targetPath = slugDir + '/' + fileBaseName + '.assets/' + pending[pi].safeName;
+            // Stage 14.4B — always index.assets/. Per Hugo 0.83.0 verification,
+            // <filename>.assets/ is NOT published; only index.assets/ is.
+            pending[pi].targetPath = slugDir + '/index.assets/' + pending[pi].safeName;
         }
 
         // Total size cap.
@@ -2098,6 +2087,13 @@ function collectFormData() {
             resetForm();
             hideNewArticleForm();
             loadArticlesFresh(); // Refresh tree to include the new article + images (bypass CDN cache)
+            // Stage 14.4B — ROOT CAUSE FIX for "Cannot read properties
+            // of undefined (reading 'commitSha')". The outer
+            // submitNewArticle().then(function (result) {...}) block
+            // dereferences result.commitSha. If THIS .then() does not
+            // return, the outer .then() receives undefined and throws.
+            // Returning the result object keeps the chain intact.
+            return result;
         }).catch(function (err) {
             // Stage 14.3 — Bug 2 fix. submitNewArticleWithImages had no
             // .catch() before; failures propagated as unhandled
@@ -2245,11 +2241,10 @@ function collectFormData() {
             if (!fn) continue;
             if (fn.finalSafeName === p.safeName) continue; // no change
             // Extract the original alt text from the original markdown insertion.
-            // Stage 14.2 — format is ![alt](<fileBaseName>.assets/<safeName>).
-            var esc = (p.fileBaseName || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            var altMatch = p.markdown.match(new RegExp('^!\\[([^\\]]*)\\]\\(' + esc + '\\.assets\\/[^\\)]+\\)$'));
+            // Stage 14.4B — format is ![alt](index.assets/<safeName>).
+            var altMatch = p.markdown.match(/^!\[([^\]]*)\]\(index\.assets\/[^\)]+\)$/);
             var alt = altMatch ? altMatch[1] : fn.finalSafeName.replace(/\.[^.]+$/, '');
-            var newMd = '![' + alt + '](' + (p.fileBaseName || '') + '.assets/' + fn.finalSafeName + ')';
+            var newMd = '![' + alt + '](index.assets/' + fn.finalSafeName + ')';
             var oldMd = p.markdown;
             var idx = result.indexOf(oldMd);
             if (idx >= 0) {
@@ -2283,7 +2278,8 @@ function collectFormData() {
         var orphans = [];
         for (var i = 0; i < state.pendingUploads.length; i++) {
             var p = state.pendingUploads[i];
-            var ref = (p.fileBaseName || '') + '.assets/' + p.safeName;
+            // Stage 14.4B — assets are always in `index.assets/`.
+            var ref = 'index.assets/' + p.safeName;
             if (body.indexOf(ref) < 0) {
                 orphans.push({ id: p.id, name: p.safeName });
             }
@@ -2316,14 +2312,13 @@ function addPendingUpload(file, formMode, articlePathOrFilename) {
             return null;
         }
 
-        // Stage 14.2 — every legal `.md` article may host image uploads.
-        // We derive the fileBaseName from the article path itself rather
-        // than asking "is this a bundle?". The legacy "standard Page
-        // Bundle" gate is gone.
+        // Stage 14.4B — every image lives in `index.assets/`. fileBaseName
+        // is hard-coded to 'index' because Hugo 0.83.0 ONLY publishes
+        // `index.assets/`. We removed the per-article filename branch.
         var articlePath, fileBaseName;
         if (formMode === 'edit' && state.edit) {
             articlePath = state.edit.path;
-            fileBaseName = state.edit.fileBaseName;
+            fileBaseName = state.edit.fileBaseName || 'index';
             if (state.edit.isLoading || state.edit.isSaving) {
                 showImageError(formMode, '正在加载/保存中，请稍候再上传。');
                 return null;
@@ -2332,23 +2327,24 @@ function addPendingUpload(file, formMode, articlePathOrFilename) {
                 showImageError(formMode, '当前文件不是有效的 Markdown 文章，无法上传图片。');
                 return null;
             }
-        } else if (formMode === 'new') {
-            // Stage 14.3 — Bug 1 fix. The new-article filename input
-            // drives the final path, but most users leave it empty and
-            // expect the default '<slug>.md' to be used. Without a
-            // fileBaseName the markdown link collapses to '![](.assets/...)'.
-            // Fall back to the title-derived slug so buildMarkdown always
-            // has a non-empty fileBaseName to anchor the assets dir.
-            var fn = (articlePathOrFilename || '').trim();
-            if (!fn) {
-                var titleFallback = (els.naTitle && els.naTitle.value || '').trim();
-                var slugFallback = M.slugify(titleFallback);
-                if (slugFallback) fn = slugFallback + '.md';
+            // Stage 14.4B — legacy 4-segment articles (content/posts/YYYY/MM/DD/<file>.md)
+            // cannot host images. Hugo 0.83.0 verification confirmed
+            // <file>.assets/ is NOT published; uploading would write
+            // orphan resources that the user cannot see. Reject
+            // explicitly with a clear message.
+            if (state.edit.layout === 'legacy' && !/\/index\.md$/i.test(articlePath)) {
+                showImageError(formMode,
+                    '此文章是 legacy 4 段结构（YYYY/MM/DD/<file>.md），' +
+                    'Hugo 0.83.0 不支持 <file>.assets/，无法上传图片。' +
+                    '请改用 5 段 slug bundle（<slug>/index.md）后重试。');
+                return null;
             }
-            fileBaseName = fn ? fn.replace(/\.md$/i, '') : '';
-            // No path yet (it only exists once submitNewArticle resolves
-            // the slug). Use a sentinel so the pending targetPath can be
-            // rebuilt by submitNewArticleWithImages right before commit.
+        } else if (formMode === 'new') {
+            // Stage 14.4B — assets are always `index.assets/`. The article
+            // file is fixed at `index.md`. The pending targetPath is a
+            // sentinel until submitNewArticleWithImages rebuilds the real
+            // path right before commit.
+            fileBaseName = 'index';
             articlePath = null;
         } else {
             showImageError(formMode, '当前文件不是有效的 Markdown 文章，无法上传图片。');
@@ -2368,7 +2364,9 @@ function addPendingUpload(file, formMode, articlePathOrFilename) {
         // Compute target path.
         var targetPath;
         if (formMode === 'edit' && state.edit) {
-            targetPath = IU.computeTargetPath(state.edit.path, fileBaseName, safeName);
+            // image.js computeTargetPath is hard-coded to index.assets/,
+            // so we can pass any non-null fileBaseName. We use 'index'.
+            targetPath = IU.computeTargetPath(state.edit.path, safeName);
         } else {
             // New: the article path is decided at submit time by
             // submitNewArticle. Use a sentinel target path here;
@@ -2532,14 +2530,14 @@ function addPendingUpload(file, formMode, articlePathOrFilename) {
             var pending = addPendingUpload(files[i], formMode, articlePathOrFilename);
             if (pending && textarea) {
                 // Insert Markdown at cursor and leave cursor after.
-                // Stage 14.2 — link uses "<fileBaseName>.assets/<safeName>"
-                // which is the article's own assets directory regardless of
-                // layout. fileBaseName is carried on the pending record.
-                // Stage 14.3 — also remember the exact snippet we inserted
-                // so removePendingUpload can take it back out without
-                // touching unrelated user-typed references.
+                // Stage 14.4B — assets are always in `index.assets/`. The
+                // link format is fixed:
+                //   ![<safeName basename>](index.assets/<safeName>)
+                // Remember the exact snippet so removePendingUpload can
+                // take it back out without touching unrelated user-typed
+                // references.
                 var IU = window.ImageUpload;
-                var md = IU.buildMarkdown(pending.fileBaseName || '', pending.safeName);
+                var md = IU.buildMarkdown(pending.safeName);
                 pending.markdownReference = md;
                 IU.insertAtCursor(textarea, md);
             }
@@ -2633,9 +2631,8 @@ function addPendingUpload(file, formMode, articlePathOrFilename) {
         for (var i = 0; i < state.pendingUploads.length; i++) {
             var p = state.pendingUploads[i];
             if (p.formMode !== 'new') continue;
-            // Stage 14.2 — pending record carries fileBaseName; the
-            // pending image link is "<fileBaseName>.assets/<safeName>".
-            var ref = (p.fileBaseName || '') + '.assets/' + p.safeName;
+            // Stage 14.4B — assets are always in `index.assets/`.
+            var ref = 'index.assets/' + p.safeName;
             var placeholder = 'PENDINGIMG:' + i;
             processed = processed.split(ref).join(placeholder);
         }

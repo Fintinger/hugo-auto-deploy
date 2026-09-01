@@ -202,9 +202,9 @@
             </div>
 
             <div class="form-row">
-                <label for="na-filename" class="label">文件名</label>
-                <input id="na-filename" type="text" class="input" value="" placeholder="（留空则自动使用 <slug>.md）" maxlength="80" autocomplete="off" spellcheck="false">
-                <p class="hint">Stage 14.2 — 新文章文件名（决定 assets 目录名）。留空自动使用 <code>&lt;slug&gt;.md</code>；可填 <code>Sort.md</code>、<code>index.md</code> 等任意合法 <code>.md</code> 名。最终文章路径 <code>content/posts/YYYY/MM/DD/&lt;slug&gt;/&lt;filename&gt;.md</code>，图片目录 <code>&lt;filename&gt;.assets/</code>。</p>
+                <label for="na-filename" class="label">Slug（高级）</label>
+                <input id="na-filename" type="text" class="input" value="" placeholder="（留空则按标题自动派生）" maxlength="80" autocomplete="off" spellcheck="false">
+                <p class="hint">Stage 14.4B — Slug 仅影响路径 <code>content/posts/YYYY/MM/DD/&lt;slug&gt;/index.md</code>。文章文件始终为 <code>index.md</code>（不可改），图片目录始终为 <code>index.assets/</code>。同一天同一 slug 自动追加 <code>-2</code> / <code>-3</code>。</p>
                 <p class="hint" id="na-filename-error"></p>
             </div>
 
