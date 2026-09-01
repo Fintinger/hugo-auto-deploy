@@ -18,7 +18,7 @@ image: https://c.s-microsoft.com/en-us/CMSImages/hero_animation_poster_4K_Sharpe
 
 🐾ventoy(绿色开源)： [官网](https://www.ventoy.net/cn/index.html) [蓝奏云](https://www.lanzouw.com/i1tAAu8zyhe) [直链下载](https://archai.oss-cn-beijing.aliyuncs.com/ventoy-1.0.52-windows.zip)
 
-![202109192250138](index.assets/202109192250138.png)
+![202109192250138](index.assets/image-20210919225025265.png)
 
 第一步：选择设备
 
@@ -27,6 +27,7 @@ image: https://c.s-microsoft.com/en-us/CMSImages/hero_animation_poster_4K_Sharpe
 第三步：将下载的系统镜像 **.iso** 文件移动到U盘即可，这里推荐一个下载windows正版系统的网站 [ITELLYOU](https://next.itellyou.cn/)
 
 ## 注意保存必要文件
+
 
 
 
