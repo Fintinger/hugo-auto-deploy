@@ -1,9 +1,12 @@
-<link rel="stylesheet" href="https://unpkg.com/@waline/client@v3/dist/waline.css" />
+<link rel="stylesheet" href="/libs/waline/waline.css" />
 <div id="waline"></div>
 <script type="module">
-    import { init } from 'https://unpkg.com/@waline/client@v3/dist/waline.js';
+    import { init } from '/libs/waline/waline.js';
     init({
         el: '#waline',
+        // TODO(国内加速): 给 Waline 后端绑定 waline.archai.space 后，启用下面这行并删掉旧值。
+        // 原因：*.vercel.app 在国内更容易被墙，自定义域名可显著改善评论加载。
+        // serverURL: 'https://waline.archai.space/',
         serverURL: 'https://waline-comments-liart.vercel.app/',
     });
 </script>

@@ -1,5 +1,5 @@
 baseURL: "https://blog.archai.space"
-title: Archai's home
+title: Archai 的技术小站
 pagination:
   pagerSize: 6
 theme: PaperMod
@@ -27,8 +27,8 @@ permalinks:
     page: /:slug/
 
 params:
-  title: "Archai's home"
-  description: ""
+  title: "Archai 的技术小站"
+  description: "个人技术博客，记录编程学习笔记与技术实践。"
   keywords: [Blog, Portfolio, PaperMod]
   author: Archai
   images: 
@@ -59,7 +59,7 @@ params:
     # safari_pinned_tab: "<link / abs url>"
 
   label:
-    text: "Home"
+    text: "Archai 的技术小站"
     # icon: https://gitee.com/fintinger/figure-bed/raw/master//images/20210530080206.ico
     # iconHeight: 0
 
