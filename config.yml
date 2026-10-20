@@ -29,6 +29,10 @@ permalinks:
 params:
   title: "Archai的技术小站"
   description: "个人技术博客，记录编程学习笔记与技术实践。"
+  # ICP 备案号：按要求展示在页脚并链接至工信部备案系统
+  icp: "陇ICP备2026010044号-1"
+  # 公安联网备案号：办理完成后填入，形如「陇公网安备 6205xxxxxxxxxx号」
+  # police: ""
   keywords: [Blog, Portfolio, PaperMod]
   author: Archai
   images: 

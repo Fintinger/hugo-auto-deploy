@@ -10,6 +10,17 @@
         <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
         <a href="https://git.io/hugopapermod" rel="noopener" target="_blank">PaperMod</a>
     </span>
+    {{- if (or .Site.Params.icp .Site.Params.police) }}
+    <span class="footer-beian">
+        {{- with .Site.Params.icp }}
+        <a href="https://beian.miit.gov.cn/" rel="noopener noreferrer" target="_blank">{{ . }}</a>
+        {{- end }}
+        {{- if and .Site.Params.icp .Site.Params.police }}&nbsp;·&nbsp;{{ end }}
+        {{- with .Site.Params.police }}
+        <a href="https://beian.mps.gov.cn/" rel="noopener noreferrer" target="_blank">{{ . }}</a>
+        {{- end }}
+    </span>
+    {{- end }}
 </footer>
 {{- end }}
 
