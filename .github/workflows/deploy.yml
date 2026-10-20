@@ -1,0 +1,53 @@
+name: Deploy to Aliyun
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# 同一时间只跑一个部署，新推送会取消进行中的旧部署
+concurrency:
+  group: deploy-aliyun
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 版本与本地构建保持一致，避免主题/配置在新版 Hugo 下产生差异
+      - name: Install Hugo (extended 0.83.0)
+        run: |
+          set -euo pipefail
+          HUGO_VERSION=0.83.0
+          wget -q "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_Linux-64bit.tar.gz" -O /tmp/hugo.tar.gz
+          sudo tar -xzf /tmp/hugo.tar.gz -C /usr/local/bin hugo
+          hugo version
+
+      - name: Build site
+        run: |
+          set -euo pipefail
+          hugo --gc --minify
+          # 构建产物健全性检查，避免空目录被 rsync --delete 推上去清空线上
+          test -f public/index.html
+          echo "产物文件数: $(find public -type f | wc -l)"
+
+      - name: Set up SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy via rsync
+        run: |
+          set -euo pipefail
+          rsync -rlptzv --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" \
+            public/ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/blog/"
