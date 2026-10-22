@@ -17,7 +17,8 @@
         {{- end }}
         {{- if and .Site.Params.icp .Site.Params.police }}&nbsp;·&nbsp;{{ end }}
         {{- with .Site.Params.police }}
-        <a href="https://beian.mps.gov.cn/" rel="noopener noreferrer" target="_blank">{{ . }}</a>
+        <a href="{{ $.Site.Params.policeUrl | default `https://beian.mps.gov.cn/` }}" rel="noreferrer" target="_blank" class="footer-police" style="white-space:nowrap">
+            {{- with $.Site.Params.policeIcon }}<img src="{{ . }}" alt="公安备案" width="14" height="16" style="height:14px;width:auto;vertical-align:-2px;margin-right:3px;display:inline-block">{{ end }}{{ . }}</a>
         {{- end }}
     </span>
     {{- end }}

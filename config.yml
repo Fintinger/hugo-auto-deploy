@@ -31,8 +31,10 @@ params:
   description: "个人技术博客，记录编程学习笔记与技术实践。"
   # ICP 备案号：按要求展示在页脚并链接至工信部备案系统
   icp: "陇ICP备2026010044号-1"
-  # 公安联网备案号：办理完成后填入，形如「陇公网安备 6205xxxxxxxxxx号」
-  # police: ""
+  # 公安联网备案：图标须显示在编号之前，链接指向该备案的详情页
+  police: "甘公网安备62052202000175号"
+  policeUrl: "https://beian.mps.gov.cn/#/query/webSearch?code=62052202000175"
+  policeIcon: "/images/beian-police.png"
   keywords: [Blog, Portfolio, PaperMod]
   author: Archai
   images: 
@@ -47,9 +49,9 @@ params:
   ShowCodeCopyButtons: true
   disableSpecial1stPost: true
   disableScrollToTop: false
-  # 公安联网备案期间临时关闭评论：站点以「非交互式」申报，上线内容不得含用户交互功能。
-  # 备案审核通过后，把下面改回 true 即可恢复 Waline 评论。
-  comments: false
+  # 评论开关：公安备案申报期间曾临时关闭（以「非交互式」申报），
+  # 备案已于 2026-10-22 通过，现已恢复。
+  comments: true
   hidemeta: false
   hideSummary: false
   showtoc: true
