@@ -1,6 +1,6 @@
 ---
 title: 从零实现一个3D卡片的镜面倒影效果
-date: 2024-01-18
+date: "2026-08-10"
 categories:
 - 前端
 - CSS
@@ -195,12 +195,8 @@ previous/next 卡片有 `rotateY(±48deg)` 3D 变换，倒影需要额外处理�
 
 ## 最终效果
 
-```text
-     ┌──────────┐
-     │  COVER   │  ← 卡片
-     └──────────┘
-        ↓↓↓↓↓
-      镜像颜色   ← 倒影（最清晰）
-        ↓↓↓
-       逐渐消失  ← 自然渐隐
-```
+[3D卡片](index.assets/PixPin_2026-10-27_13-38-56.png)
+
+访问[Acmusic](https://music.archai.space/)查看（需登录）
+
+
