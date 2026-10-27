@@ -1173,13 +1173,52 @@ function loadArticleForEdit(path) {
 
         var collected = collectEditChanges();
         if (collected === null) return;
-        if (collected.noChange) {
+
+        var editPending = state.pendingUploads.filter(function (p) {
+            return p.formMode === 'edit';
+        });
+
+        // Stage 14.5 — a pending image is a real change even when the
+        // article text itself is untouched. Do not short-circuit in that
+        // case, otherwise the image can never be committed (the previous
+        // behaviour left the queue stuck forever).
+        if (collected.noChange && editPending.length === 0) {
             setEditBanner('没有检测到修改，未提交。', 'success');
             edit.isDirty = false;
             return;
         }
 
+        hideImageError('edit');
+
+        // Fail fast before any GitHub API call: size / type / reference
+        // validation. The pending queue stays intact on failure.
+        if (editPending.length > 0) {
+            var preflight = preflightEditImageCommit(edit, editPending, collected);
+            if (!preflight.ok) {
+                setEditBanner(preflight.error, 'error');
+                if (els.edImageError) {
+                    els.edImageError.textContent = preflight.error;
+                    els.edImageError.hidden = false;
+                }
+                return;
+            }
+        }
+
         setEditSubmitting(true);
+
+        // Stage 14.5 — edit + images: one atomic commit via Git Data API.
+        if (editPending.length > 0) {
+            saveEditWithImages(edit, editPending, collected).catch(function (err) {
+                handleApiError(err);
+                if (err && err.code === 'CONFLICT') {
+                    return showConflictWithLatest(edit);
+                }
+                setEditBanner(formatError(err), 'error');
+            }).then(function () {
+                setEditSubmitting(false);
+            });
+            return;
+        }
 
         API.getFile(state.token, edit.path).then(function (latest) {
             if (latest.content !== edit.originalRaw) {
@@ -1200,6 +1239,10 @@ function loadArticleForEdit(path) {
             }
 
             var nl = window.FrontMatter.detectNewline(edit.originalRaw || '\n');
+            // FrontMatter.patch only sees the FM block; for a single-line FM
+            // in a CRLF document it appends with LF. Normalize the patched
+            // block back to the document newline so we never mix line endings.
+            patchedFm = patchedFm.replace(/\r?\n/g, nl);
 
 // FM wrapper rule:
             //   - If patched FM has any non-whitespace content → wrap with ---
@@ -1210,7 +1253,7 @@ function loadArticleForEdit(path) {
             var finalRaw;
             if (fmHasContent) {
                 finalRaw = '---' + nl + patchedFm + nl + '---' + nl + (collected.bodyChanged ? collected.newBody : edit.originalBody);
-                if (!/(\\r?\\n)$/.test(finalRaw)) finalRaw += nl;
+                if (!/(\r?\n)$/.test(finalRaw)) finalRaw += nl;
             } else {
                 // No FM wrapper — output body only (NEVER originalRaw, which contains FM).
                 finalRaw = collected.bodyChanged ? collected.newBody : edit.originalBody;
@@ -1227,7 +1270,7 @@ function loadArticleForEdit(path) {
                 edit.latestRaw = finalRaw;
                 edit.latestSha = result.sha;
                 edit.isDirty = false;
-                setEditBanner('已保存（Commit ' + (result.commitSha || '').slice(0, 7) + '）。等待 Vercel 自动部署。', 'success');
+                setEditBanner('已保存（Commit ' + (result.commitSha || '').slice(0, 7) + '）。等待自动部署。', 'success');
 
                 API.getFile(state.token, edit.path).then(function (reloaded) {
                     if (!state.edit) return;
@@ -1238,11 +1281,10 @@ function loadArticleForEdit(path) {
             });
         }).catch(function (err) {
             handleApiError(err);
-            if (err && err && err.code === 'CONFLICT') {
-                showConflictUI();
-            } else {
-                setEditBanner(formatError(err), 'error');
+            if (err && err.code === 'CONFLICT') {
+                return showConflictWithLatest(edit);
             }
+            setEditBanner(formatError(err), 'error');
         }).then(function () {
             setEditSubmitting(false);
         });
@@ -1271,6 +1313,21 @@ function loadArticleForEdit(path) {
         if (els.edConflictBanner) els.edConflictBanner.hidden = true;
     }
 
+    /**
+     * A CONFLICT from the API does not carry the latest remote content
+     * (baseline mismatches do). Re-fetch it before showing the banner so
+     * [重新加载远程版本] reloads the real latest version instead of the
+     * stale baseline. If the fetch itself fails, keep the existing cache.
+     */
+    function showConflictWithLatest(edit) {
+        return API.getFile(state.token, edit.path).then(function (latest) {
+            edit.latestRaw = latest.content;
+            edit.latestSha = latest.sha;
+        }).catch(function () { /* keep previous cache */ }).then(function () {
+            showConflictUI();
+        });
+    }
+
     function reloadFromRemote() {
         if (!state.edit || !state.edit.latestRaw) return;
         var file = {
@@ -1285,6 +1342,255 @@ function loadArticleForEdit(path) {
     function keepLocalEdits() {
         hideConflictUI();
         setEditBanner('当前内容尚未保存。远程版本已变化，再次保存时会再次校验 baseline。', 'success');
+    }
+
+    /* ============================================
+       Stage 14.5 — Edit-mode image upload
+       One atomic commit: updated article text + image blobs.
+       ============================================ */
+
+    /**
+     * Pre-flight for an edit save that carries pending images. Runs before
+     * any GitHub API call so failures are instant and the queue is kept.
+     * Returns { ok: true } or { ok: false, error }.
+     */
+    function preflightEditImageCommit(edit, pending, collected) {
+        var IU = window.ImageUpload;
+        var totalBytes = 0;
+        for (var i = 0; i < pending.length; i++) {
+            var p = pending[i];
+            var v = IU.validateImage(p.file);
+            if (!v.ok) {
+                return { ok: false, error: '图片校验失败：' + p.originalName + ' — ' + v.error };
+            }
+            totalBytes += p.size || 0;
+        }
+        if (totalBytes > 20 * 1024 * 1024) {
+            return { ok: false, error: '本次图片总大小超过 20MB，请分次保存。' };
+        }
+
+        var body = collected.bodyChanged ? collected.newBody : edit.originalBody;
+        var refCheck = checkPendingImageReferences(body, pending);
+        if (refCheck.ok) return { ok: true };
+
+        var parts = [];
+        if (refCheck.missing.length > 0) {
+            parts.push('以下待上传图片未在正文中引用：' + refCheck.missing.join(', ') +
+                '。请插入图片引用或从待上传列表移除。');
+        }
+        if (refCheck.linkOnly.length > 0) {
+            parts.push('以下图片在正文里是链接而不是图片（缺少 !）：' + refCheck.linkOnly.join(', ') +
+                '。Hugo 不会把它显示为图片，请改为 ![alt](index.assets/文件名)。');
+        }
+        return { ok: false, error: parts.join(' ') };
+    }
+
+    /**
+     * Verify each pending image is referenced with Markdown IMAGE syntax
+     * (`![alt](index.assets/<name>)`), not just a plain link.
+     * Returns { ok, missing: [name], linkOnly: [name] }.
+     */
+    function checkPendingImageReferences(body, pendingList) {
+        var missing = [];
+        var linkOnly = [];
+        for (var i = 0; i < pendingList.length; i++) {
+            var p = pendingList[i];
+            var ref = 'index.assets/' + p.safeName;
+            if (body.indexOf(ref) < 0) {
+                missing.push(p.safeName);
+                continue;
+            }
+            var escaped = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            // Allow an optional markdown title: ![alt](url "title").
+            var re = new RegExp('!\\[[^\\]]*\\]\\(' + escaped + '(?:\\s+"[^"]*")?\\)');
+            if (!re.test(body)) {
+                linkOnly.push(p.safeName);
+            }
+        }
+        return {
+            ok: missing.length === 0 && linkOnly.length === 0,
+            missing: missing,
+            linkOnly: linkOnly
+        };
+    }
+
+    /**
+     * Build the final article bytes for an edit save.
+     * `collected.noChange` means only the pending images changed: reuse the
+     * remote bytes verbatim so an image-only commit cannot rewrite the file.
+     */
+    function buildEditFinalRaw(edit, collected) {
+        if (collected.noChange) {
+            return edit.originalRaw;
+        }
+        var patchedFm;
+        if (edit.hasFrontMatter) {
+            patchedFm = window.FrontMatter.patch(edit.originalFrontMatterRaw, collected.changes);
+        } else if (Object.keys(collected.changes).length > 0) {
+            patchedFm = window.FrontMatter.patch('', collected.changes);
+        } else {
+            patchedFm = '';
+        }
+
+        // Same FM wrapper rule as the Contents API path: never emit an
+        // empty `---` / `---` block.
+        var nl = window.FrontMatter.detectNewline(edit.originalRaw || '\n');
+        // Keep the patched FM block in the document's line ending (see the
+        // equivalent normalization in saveEdit's Contents API path).
+        patchedFm = patchedFm.replace(/\r?\n/g, nl);
+        var fmHasContent = patchedFm.trim().length > 0;
+        var body = collected.bodyChanged ? collected.newBody : edit.originalBody;
+        var finalRaw;
+        if (fmHasContent) {
+            finalRaw = '---' + nl + patchedFm + nl + '---' + nl + body;
+            if (!/(\r?\n)$/.test(finalRaw)) finalRaw += nl;
+        } else {
+            finalRaw = body;
+        }
+        return finalRaw;
+    }
+
+    function buildEditCommitMessage(edit) {
+        var title = (edit.frontMatter && edit.frontMatter.title) || edit.path.split('/').pop();
+        var willBeDraft = !!(els.edDraft && els.edDraft.checked);
+        var commitPrefix = willBeDraft ? 'post: draft' : 'post:';
+        return window.ArticleModel.sanitizeTitleForCommit(title, commitPrefix);
+    }
+
+    /**
+     * Repo-relative path set of every blob on the current main tree.
+     * Used to rename pending images that would overwrite an existing file.
+     * If the branch moves after this call, commitChanges' force:false ref
+     * update fails with 422 and surfaces as CONFLICT — never an overwrite.
+     */
+    function getRemotePathSet() {
+        return API.getTree(state.token, true).then(function (treeRes) {
+            if (treeRes.truncated) {
+                throw new API.AdminError('VALIDATION', 'Tree API 返回截断数据，无法安全提交');
+            }
+            var set = new Set();
+            for (var i = 0; i < treeRes.tree.length; i++) {
+                var it = treeRes.tree[i];
+                if (it.type === 'blob') set.add(it.path);
+            }
+            return set;
+        });
+    }
+
+    /**
+     * Stage 14.5 — edit-mode save with pending images.
+     * Single atomic commit (article + images) through the Git Data API.
+     * Concurrency: baseline re-read + force:false ref update.
+     */
+    function saveEditWithImages(edit, pending, collected) {
+        var baseCommitSha = null;
+        var finalRaw = '';
+
+        return API.getBranch(state.token).then(function (branch) {
+            baseCommitSha = branch.commitSha;
+            if (!baseCommitSha) {
+                throw new API.AdminError('UNKNOWN', '无法获取 main 分支 HEAD commit');
+            }
+            // Re-read at the head we are about to build on. Never overwrite
+            // an article that changed since it was opened: same CONFLICT UI
+            // as the Contents API path.
+            return API.getFile(state.token, edit.path);
+        }).then(function (fresh) {
+            if (fresh.content !== edit.originalRaw) {
+                edit.latestRaw = fresh.content;
+                edit.latestSha = fresh.sha;
+                throw new API.AdminError('CONFLICT', '远程文章已变化，未提交图片');
+            }
+            return getRemotePathSet();
+        }).then(function (remotePathSet) {
+            var finalNames = resolveFinalPendingNames(pending, remotePathSet);
+            finalRaw = buildEditFinalRaw(edit, collected);
+
+            var anyRenamed = false;
+            for (var i = 0; i < finalNames.length; i++) {
+                if (finalNames[i].finalSafeName !== finalNames[i].originalSafeName) {
+                    anyRenamed = true;
+                    break;
+                }
+            }
+            if (anyRenamed) {
+                finalRaw = updateBodyReferencesForFinalNames(finalRaw, pending, finalNames);
+            }
+
+            var changes = [{ path: edit.path, type: 'text', content: finalRaw }];
+            for (var j = 0; j < pending.length; j++) {
+                var p = pending[j];
+                var fn = null;
+                for (var k = 0; k < finalNames.length; k++) {
+                    if (finalNames[k].id === p.id) { fn = finalNames[k]; break; }
+                }
+                if (!fn) continue;
+                changes.push({
+                    path: fn.finalTargetPath,
+                    type: 'image',
+                    file: p.file
+                });
+            }
+
+            return API.commitChanges(state.token, {
+                baseCommitSha: baseCommitSha,
+                changes: changes,
+                message: buildEditCommitMessage(edit)
+            });
+        }).then(function (result) {
+            var imageCount = pending.length;
+            var shortSha = ((result && result.commitSha) || '').slice(0, 7);
+
+            clearEditPendingAfterSave(pending);
+
+            // Git Data API does not return the new file blob SHA; the
+            // reload below repopulates it from GitHub.
+            edit.originalRaw = finalRaw;
+            edit.originalSha = null;
+            edit.latestRaw = finalRaw;
+            edit.latestSha = null;
+            edit.isDirty = false;
+
+            setEditBanner('已保存（含 ' + imageCount + ' 张图片，Commit ' + shortSha +
+                '）。等待自动部署。', 'success');
+
+            API.getFile(state.token, edit.path).then(function (reloaded) {
+                // The user may have closed the editor while the commit was
+                // in flight; never clobber a different article's form.
+                if (state.edit !== edit) return;
+                reloadEditFromLatest(reloaded);
+                renderEditPreview();
+            }).catch(function () { /* ignore */ });
+
+            loadArticlesFresh();
+            return result;
+        });
+    }
+
+    /**
+     * Drop only the edit-mode pending images that were part of a successful
+     * commit, revoking their object URLs. New-article pending entries and any
+     * unrelated edit entries are untouched.
+     */
+    function clearEditPendingAfterSave(committed) {
+        var committedIds = Object.create(null);
+        for (var c = 0; c < committed.length; c++) {
+            committedIds[committed[c].id] = true;
+        }
+        var kept = [];
+        for (var i = 0; i < state.pendingUploads.length; i++) {
+            var p = state.pendingUploads[i];
+            if (p.formMode === 'edit' && committedIds[p.id]) {
+                if (p.previewUrl) {
+                    try { URL.revokeObjectURL(p.previewUrl); } catch (e) { /* ignore */ }
+                }
+                continue;
+            }
+            kept.push(p);
+        }
+        state.pendingUploads = kept;
+        renderPendingList('edit');
+        hideImageError('edit');
     }
 
     /**
@@ -2012,7 +2318,7 @@ function collectFormData() {
         var finalNames = resolveFinalPendingNames(pending, remotePaths);
 
         // Re-validate references in body (new article body = collected form data body).
-        var refCheck = checkPendingReferences(content);
+        var refCheck = checkPendingReferences(content, 'new');
         if (!refCheck.ok) {
             setSubmitting(false);
             var orphanNames = refCheck.orphans.map(function (o) { return o.name; }).join(', ');
@@ -2158,10 +2464,12 @@ function collectFormData() {
         // Stage 6: Markdown editor + preview.
         wireMarkdownEditor();
 
-        // beforeunload protection — when form dirty OR pending uploads exist.
+        // beforeunload protection — when a form is dirty (new or edit) OR
+        // pending uploads exist.
         window.addEventListener('beforeunload', function (e) {
             var hasPending = state.pendingUploads && state.pendingUploads.length > 0;
-            if ((state.formDirty || hasPending) && !state.formSubmitting) {
+            var editDirty = !!(state.edit && state.edit.isDirty);
+            if ((state.formDirty || editDirty || hasPending) && !state.formSubmitting) {
                 e.preventDefault();
                 e.returnValue = '';
                 return '';
@@ -2222,13 +2530,13 @@ function collectFormData() {
     }
 
     /**
-     * Stage 9B — Update body Markdown references to match final safe names.
-     * Each pending has a unique `markdown` (the literal text 9A inserted).
-     * Process in REVERSE order so that later replacements don't shift
-     * earlier insertion positions. The alt text is preserved from
-     * the original markdown (i.e., the user's chosen caption is NOT changed
-     * when we have to rename the file to avoid a remote conflict).
-     * If not found, the user has deleted the reference; the upload is skipped.
+     * Stage 9B/14.5 — Update body Markdown references to match final safe
+     * names. Each pending carries `markdownReference` (the literal text 9A
+     * inserted). Process in REVERSE order so later replacements don't shift
+     * earlier insertion positions. The user's alt text is preserved when the
+     * original snippet is still verbatim; if the user edited the alt text
+     * (so the snippet no longer matches), fall back to rewriting only the
+     * URL reference.
      */
     function updateBodyReferencesForFinalNames(body, pendingList, finalNames) {
         var result = body;
@@ -2240,18 +2548,20 @@ function collectFormData() {
             }
             if (!fn) continue;
             if (fn.finalSafeName === p.safeName) continue; // no change
-            // Extract the original alt text from the original markdown insertion.
-            // Stage 14.4B — format is ![alt](index.assets/<safeName>).
-            var altMatch = p.markdown.match(/^!\[([^\]]*)\]\(index\.assets\/[^\)]+\)$/);
+            var oldRef = 'index.assets/' + p.safeName;
+            var newRef = 'index.assets/' + fn.finalSafeName;
+            var md = p.markdownReference || p.markdown || '';
+            var altMatch = md.match(/^!\[([^\]]*)\]/);
             var alt = altMatch ? altMatch[1] : fn.finalSafeName.replace(/\.[^.]+$/, '');
-            var newMd = '![' + alt + '](index.assets/' + fn.finalSafeName + ')';
-            var oldMd = p.markdown;
-            var idx = result.indexOf(oldMd);
-            if (idx >= 0) {
-                result = result.substring(0, idx) + newMd + result.substring(idx + oldMd.length);
+            if (md && result.indexOf(md) >= 0) {
+                var newMd = '![' + alt + '](' + newRef + ')';
+                // Function replacement: alt text may contain `$&` etc.
+                result = result.replace(md, function () { return newMd; });
+            } else {
+                // User edited the alt text (or the snippet is otherwise not
+                // verbatim) — rewrite only the URL, keep the caption/syntax.
+                result = result.split(oldRef).join(newRef);
             }
-            // If not found, the user has deleted the image; the upload
-            // caller's "consistency check" will skip this pending.
         }
         return result;
     }
@@ -2268,16 +2578,16 @@ function collectFormData() {
     }
 
     /**
-     * Stage 9B — Verify every pending's target is referenced in the body.
+     * Stage 9B/14.5 — Verify every pending's target is referenced in the
+     * body. `formMode` (optional) scopes the check to one form so pending
+     * entries from the other form can never break a save.
      * Returns { ok: true } or { ok: false, orphans: [{id, name}] }.
-     *
-     * Stage 14.2 — pending records carry fileBaseName; the reference
-     * key is "<fileBaseName>.assets/<safeName>".
      */
-    function checkPendingReferences(body) {
+    function checkPendingReferences(body, formMode) {
         var orphans = [];
         for (var i = 0; i < state.pendingUploads.length; i++) {
             var p = state.pendingUploads[i];
+            if (formMode && p.formMode !== formMode) continue;
             // Stage 14.4B — assets are always in `index.assets/`.
             var ref = 'index.assets/' + p.safeName;
             if (body.indexOf(ref) < 0) {

@@ -102,26 +102,30 @@ jsFiles.forEach(function (rel) {
     check(rel + ' - no Bearer literal', grepAll(rel, 'Bearer [A-Za-z0-9]').length === 0);
 });
 
-// 3. CDN / SRI
-console.log('\n[3] CDN / SRI');
+// 3. Third-party assets (self-hosted since b630744 — jsDelivr unreachable in CN)
+console.log('\n[3] Third-party assets / SRI');
 var indexHtml = read('static/admin/index.html');
-var cdnMatches = indexHtml.match(/https:\/\/cdn\.jsdelivr\.net\/[^"]+/g) || [];
-check('CDN resources present', cdnMatches.length > 0, cdnMatches.length + ' URL(s)');
 
-var hasDynamic = cdnMatches.some(function (u) {
-    return /@latest|@next|@\d+\.x\.x/.test(u);
+var remoteScripts = indexHtml.match(/<script[^>]+src="https?:\/\/[^"]+"/g) || [];
+check('No remote <script> in admin', remoteScripts.length === 0,
+    remoteScripts.length ? remoteScripts.length + ' hit(s)' : '');
+var remoteStyles = indexHtml.match(/<link[^>]+href="https?:\/\/[^"]+"/g) || [];
+check('No remote <link> in admin', remoteStyles.length === 0,
+    remoteStyles.length ? remoteStyles.length + ' hit(s)' : '');
+
+var localLibs = [
+    '/libs/marked/marked.min.js',
+    '/libs/highlight/highlight.min.js',
+    '/libs/katex/katex.min.js',
+    '/libs/katex/katex.min.css'
+];
+localLibs.forEach(function (u) {
+    check('admin references ' + u, indexHtml.indexOf(u) >= 0);
+    check('file exists static' + u,
+        fs.existsSync(path.join(ROOT, 'static' + u)));
 });
-check('No @latest / @next / @x.x.x', !hasDynamic);
 
-cdnMatches.forEach(function (url) {
-    var idx = indexHtml.indexOf(url);
-    var around = indexHtml.substring(idx, idx + 500);
-    check(url.split('/').slice(-3).join('/') + ' - has integrity',
-        /integrity=/.test(around));
-    check(url.split('/').slice(-3).join('/') + ' - has crossorigin',
-        /crossorigin=/.test(around));
-});
-
+// Any remaining integrity attribute must still be standard Base64 SHA-384.
 var sriMatches = indexHtml.match(/integrity="sha384-([^"]+)"/g) || [];
 sriMatches.forEach(function (full) {
     var hash = full.replace(/^integrity="sha384-|"$/g, '');
