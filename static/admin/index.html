@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <meta name="referrer" content="no-referrer">
-    <!-- CSP / X-Frame-Options / X-Content-Type-Options / Permissions-Policy / X-Robots-Tag
-         are provided by vercel.json (HTTP Response Headers).
-         The meta CSP below is kept as a fallback only. -->
+    <!-- /admin 的 HTTP 安全头（CSP / X-Frame-Options / X-Content-Type-Options / Permissions-Policy /
+         X-Robots-Tag）由 nginx snippet 提供（仓库内 deploy/nginx/blog-admin-headers.conf）。
+         The meta CSP below is kept as a fallback only; keep both in sync. -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' blob: https:; font-src 'self'; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; object-src 'none';">
     <title>Archai Blog Admin</title>
     <link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon">
@@ -530,7 +530,7 @@
 </main>
 
 <footer class="footer">
-    <p>Archai Blog Admin · V1 · 静态部署于 Vercel · 通过 GitHub API 操作</p>
+    <p>Archai Blog Admin · V1 · 静态部署于阿里云 ECS · 通过 GitHub API 操作</p>
 </footer>
 
 <script src="/admin/js/utils.js"></script>

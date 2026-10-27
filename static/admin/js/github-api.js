@@ -13,7 +13,6 @@
  * Out of scope (later stages):
  *   - Bulk Git Data API (trees/commits)
  *   - OAuth / GitHub App
- *   - Vercel API
  */
 
 (function () {

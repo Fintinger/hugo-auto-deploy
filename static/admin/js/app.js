@@ -1860,7 +1860,7 @@ function updateEditCdnStatus() {
             state.edit = null;
             if (els.editForm) els.editForm.hidden = true;
             setEditBanner('已删除 ' + dp.paths.length + ' 个文件（Commit ' +
-                (result.commitSha || '').slice(0, 7) + '）。等待 Vercel 自动部署。', 'success');
+                (result.commitSha || '').slice(0, 7) + '）。等待 GitHub Actions 自动部署。', 'success');
             loadArticlesFresh(); // refresh tree from GitHub (bypass CDN cache)
         }).catch(function (err) {
             handleApiError(err);
