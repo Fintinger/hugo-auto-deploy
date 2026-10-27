@@ -60,14 +60,17 @@
 
 ---
 
-## 4. 部署走 GitHub → Vercel 自动部署
+## 4. 部署走 GitHub Actions → 阿里云 ECS（nginx）
 
-- **日期**：2022-04-28（README Timeline）
-- **背景**：需要免运维的公网访问。
-- **最终方案**：push 到 GitHub，Vercel 自动构建部署，提供 `blog.archai.space` 域名。
-- **原因**：无需自建服务器、免费、自动 HTTPS、CI 内置。
-- **影响范围**：`public/` 构建产物 gitignored，仓库只存源码；无仓库内 CI 配置文件。
-- **未来注意事项**：构建参数在 Vercel 面板配置，不在仓库；改 `config.yml` 的 `baseURL` 等会影响线上。
+- **日期**：2026-10-20（迁移）；2026-10-27（收尾：确认唯一线上路径、旧托管平台退役）
+- **背景**：早期（2022-04）依赖境外托管平台的 Git 集成自动构建部署，国内访问不稳定；站点随后迁到国内服务器。
+- **最终方案**：push 到 GitHub `main` → `.github/workflows/deploy.yml` 用 Hugo v0.83.0 extended 构建 → `rsync -rlptzv --delete` 到阿里云 ECS（北京）`/var/www/blog/` → nginx（Let's Encrypt 证书）对外提供 `https://blog.archai.space`。
+- **原因**：国内可直连；纯静态站不需要容器/后端；一次 push 完成构建与发布；构建用的 Hugo 版本与本地一致，产物可控。
+- **影响范围**：`.github/workflows/deploy.yml`、`deploy/nginx/`、GitHub Secrets（`DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY`）；`public/` 仍 gitignored。
+- **未来注意事项**：
+  - 构建参数写在 workflow 里（不在面板）；改 `config.yml` 的 `baseURL` 等仍会影响线上。
+  - 部署唯一通道是 Actions，不要手动 scp 覆盖；`rsync --delete` 会清掉目标目录里的多余文件。
+  - 旧托管平台的 Git 集成已退役，本域名不再经过它；相关历史部署产物不承载流量。
 
 ---
 
@@ -167,3 +170,21 @@
 - **原因**：可审查、可回滚、语义清晰；文档/文章/代码隔离避免污染。
 - **影响范围**：`docs/DEVELOPMENT_WORKFLOW.md`、`docs/AI_RULES.md`、全部未来 AI 任务。
 - **未来注意事项**：历史 emoji 约定（📑✨🛠️）保留作辅助标记；提交前必须 `git status` + `git diff --cached` 检查暂存范围。
+
+---
+
+## 13. `/admin` 的 HTTP 安全头由 nginx 提供（`vercel.json` 退役）
+
+- **日期**：2026-10-27
+- **背景**：站点已由阿里云 nginx 承载，原先只在该平台生效的 `vercel.json` 不再下发任何响应头；线上 `/admin` 实际只剩页面内 `<meta>` CSP 兜底。
+- **问题**：`frame-ancestors`、`X-Frame-Options`、`X-Robots-Tag`、`Permissions-Policy` 等无法用 `<meta>` 正确表达，存在点击劫持 / 索引 / 权限策略缺口。
+- **最终方案**：
+  - 服务器 `/etc/nginx/snippets/blog-admin-headers.conf` 提供 7 个安全头；vhost 中 `location ^~ /admin/` 通过 `include` 引入。
+  - 仓库内同一份文件 `deploy/nginx/blog-admin-headers.conf` 为事实来源，vhost 副本 `deploy/nginx/blog.conf` 同步维护。
+  - `static/admin/index.html` 的 meta CSP 降级为兜底，内容需与 header CSP 保持一致。
+- **原因**：安全头必须由真正对外服务的 Web 服务器下发；nginx 原生支持，无需额外组件或构建步骤。
+- **影响范围**：`deploy/nginx/`、`static/admin/index.html`、`tools/admin-static-check.js`、`docs/DEPLOYMENT.md`。
+- **未来注意事项**：
+  - nginx 的 `add_header` 一旦出现在 location 内就会覆盖 server 级继承 → snippet 必须完整重声明 HSTS / nosniff / Referrer-Policy。
+  - `^~ /admin/` 会同时捕获 `/admin/*.css|js`，它们因此不再命中 `expires 30d` 缓存（有意为之：后台改动即时生效）。
+  - 改后必须 `nginx -t` → `systemctl reload nginx` → `curl -I` 核对；`tools/admin-static-check.js` 会校验 snippet 完整性与 CSP 漂移。

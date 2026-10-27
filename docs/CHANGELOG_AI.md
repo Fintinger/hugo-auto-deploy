@@ -1979,3 +1979,63 @@ GitHub 仓库已用 slug leaf bundle 存储新文章（`content/posts/YYYY/MM/DD
 - 旧文章结构（legacy 4 段）仍不允许上传图片，由 `addPendingUpload` 明确拒绝。
 
 ---
+
+## 2026-10-27
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+部署收尾：确认阿里云 ECS 为唯一线上路径，退役 Vercel 相关配置与文档，把 `/admin` 的 HTTP 安全头迁到 nginx。
+
+1. **线上事实核对**：`blog.archai.space` A 记录 → `39.96.78.231`（阿里云 北京），nginx 1.24 静态托管。push 会同时触发 Actions 与 Vercel Git 集成两条流水线，Vercel 产物已不承载流量，属冗余构建。
+2. **`/admin` 安全头迁至 nginx**：
+   - 新增 `deploy/nginx/blog-admin-headers.conf`：HSTS / nosniff / `Referrer-Policy: no-referrer` / `X-Frame-Options: DENY` / `X-Robots-Tag` / `Permissions-Policy` / CSP（含 `frame-ancestors 'none'`）。
+   - 服务器 `/etc/nginx/snippets/blog-admin-headers.conf` 落地同一份文件；vhost 增加 `location ^~ /admin/` 引入 snippet。
+   - nginx 在 location 内出现 `add_header` 会覆盖 server 级继承，故 snippet 内完整重声明了 HSTS / nosniff / Referrer-Policy。
+   - 已实测线上：`/admin/` 与 `/admin/*.css|js` 带齐 7 个头；`/` 保持原样（无 CSP）。
+3. **`vercel.json` 退役并删除**：内容迁移到 nginx snippet；`static/admin/index.html` 头部注释与 footer 文案同步改写。
+4. **Admin 文案**：`app.js` 删除成功提示「等待 Vercel 自动部署」→「等待 GitHub Actions 自动部署」；`github-api.js` 注释移除 Vercel 条目。
+5. **`tools/admin-static-check.js` 第 4 节重写**：由「校验 vercel.json」改为校验 nginx snippet 7 个头齐全、含 `frame-ancestors 'none'`，并新增 header CSP 与页面 meta CSP 的漂移检查。
+6. **文档体系同步**：README 删除全部 Vercel 内容并补部署拓扑；新增 `docs/DEPLOYMENT.md` runbook；`PROJECT_CONTEXT` / `ARCHITECTURE_DECISIONS`（§4 重写 + 新增 ADR 13）/ `DEVELOPMENT_WORKFLOW`（§6 增部署检查、§7 发布流程）/ `AI_RULES`（新增部署规范）/ `AGENTS.md`（Headers 与修改流程指向新事实来源）。
+
+### 修改文件
+
+- `deploy/nginx/blog-admin-headers.conf`（新增）
+- `deploy/nginx/blog.conf`（新增，线上 vhost 副本）
+- `.gitattributes`（新增：`deploy/nginx/**` 强制 LF，保证服务器直接使用仓库副本）
+- `docs/DEPLOYMENT.md`（新增）
+- `README.md`（删除 Vercel badge / 段落 / Timeline 条目，新增「部署」小节）
+- `docs/PROJECT_CONTEXT.md`（部署章节、目录树、数据流、开发注意事项）
+- `docs/ARCHITECTURE_DECISIONS.md`（§4 重写，新增 §13）
+- `docs/DEVELOPMENT_WORKFLOW.md`（§6 部署检查，§7 发布流程）
+- `docs/AI_RULES.md`（新增「部署（阿里云 ECS / nginx）规范」）
+- `AGENTS.md`（Headers 规则、修改流程第 6 步、CI 纪律措辞）
+- `tools/admin-static-check.js`（第 4 节改为 nginx snippet + CSP 漂移校验）
+- `static/admin/index.html`（头部注释、footer 文案）
+- `static/admin/js/app.js`（删除成功提示文案）
+- `static/admin/js/github-api.js`（注释）
+- `vercel.json`（删除）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+用户反馈：站点迁到国内（阿里云）后 commit 仍出现「Vercel - Deployment has completed」检查。根因是 Vercel 项目的 Git 集成从未解绑，与仓库内配置无关；同时旧 `vercel.json` 的安全头在阿里云 nginx 上从未生效，线上 `/admin` 只剩 `<meta>` CSP 兜底，缺 `frame-ancestors` / `X-Frame-Options` / `X-Robots-Tag` / `Permissions-Policy`。用户要求完成收尾（nginx 落地 + 文档同步）并从 README 移除 Vercel 内容。
+
+### 测试结果
+
+- `node --check`：7 个 admin JS 全部通过
+- `node tools/admin-static-check.js`：**0 失败**（含 Hugo BUILD_OK、snippet 完整性、header/meta CSP 一致）
+- 服务器：`nginx -t` 通过 → `systemctl reload nginx`；旧 vhost 已备份到 `/root/nginx-backups/`
+- 线上核对（`curl -I`）：
+  - `/admin/`：CSP / `X-Frame-Options: DENY` / `X-Robots-Tag` / `Permissions-Policy` / `Referrer-Policy: no-referrer` / nosniff / HSTS 全部存在
+  - `/admin/css/admin.css`：同上（`^~` 命中）
+  - `/`：仅 HSTS / nosniff / `Referrer-Policy: strict-origin-when-cross-origin`，无 CSP（符合预期）
+- 待用户 E2E：打开 `https://blog.archai.space/admin/`，Console 无 CSP 报错，连接 Token / 新建 / 编辑功能正常
+
+### 注意事项
+
+- **Vercel 侧仍需用户手动解绑**：AI 无法操作 Vercel 面板。请在 Vercel → 项目 → Settings → Git → Disconnect（或删除项目）；若 `main` 的 branch protection 勾了 `Vercel` 状态检查需同步移除。**不要注销 Vercel 账号**：Waline 评论后端仍在 `*.vercel.app`（当前评论关闭、代码保留）。
+- `^~ /admin/` 使 `/admin/*.css|js` 不再命中 `expires 30d` 缓存，属有意为之（后台更新即时生效）。
+- `content/page/about.md` 的 Timeline 仍有一条「使用 vercel 实现自动化部署」；按 AGENTS.md 内容修改走 Admin / GitHub 网页，本次未动，待用户决定。
+- 本次未自动 commit / push；推送后 Actions 会把 Admin 文案与注释改动带上线。

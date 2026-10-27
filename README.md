@@ -7,7 +7,7 @@
 <p align="center">
 <a href="https://github.com/gohugoio/hugo" target="_blank"><img src="https://img.shields.io/badge/hugo-v0.83.0-blueviolet?style=flat-square&logo=hugo" alt="hugo" /></a> 
 <a href="https://github.com/adityatelange/hugo-PaperMod" target="_blank"><img src="https://img.shields.io/badge/hugoThemes-%40paperMod-blue?style=flat-square&logo=hugo" alt="paperMod" /></a>
-<a href="https://github.com/vercel/vercel" target="_blank"><img src="https://img.shields.io/badge/Vercel-CLI%20-brightgreen?style=flat-square&logo=vercel" alt="paperMod" /></a>
+<a href="https://github.com/Fintinger/hugo-auto-deploy/actions" target="_blank"><img src="https://img.shields.io/badge/Deploy-Aliyun%20ECS-brightgreen?style=flat-square&logo=githubactions" alt="deploy" /></a>
 <a href="https://github.com/xCss/Valine" target="_blank"><img src="https://img.shields.io/badge/Valine-sys-yellow?style=flat-square" alt="Valine" /></a>
 </p>
 
@@ -17,7 +17,26 @@
 
 使用[valine](https://valine.js.org/)，并做了一些样式修改引入评论系统。
 
-无意中发现[Vercel](https://vercel.com/)平台能够实现对github项目的自动化部署，并提供url来访问，所以便有了这个仓库的诞生！
+站点托管在**阿里云 ECS + nginx**，push 到 GitHub 后由 **GitHub Actions 自动构建发布**，国内访问更稳定。
+
+
+## 部署
+
+```
+push 到 main
+   ↓
+GitHub Actions（.github/workflows/deploy.yml）
+   ↓  Hugo v0.83.0 extended 构建
+public/
+   ↓  rsync --delete
+阿里云 ECS  /var/www/blog/
+   ↓  nginx + Let's Encrypt
+https://blog.archai.space
+```
+
+- 需要配置的 GitHub Secrets：`DEPLOY_HOST`、`DEPLOY_USER`、`DEPLOY_SSH_KEY`
+- `/admin` 的 HTTP 安全头（CSP / X-Frame-Options / X-Robots-Tag 等）由 nginx 提供，配置见 [`deploy/nginx/`](deploy/nginx/)
+- 完整部署与排障说明见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 
 ## DIV & TIPS
@@ -52,7 +71,7 @@
 
 ✅黑暗模式适配✨ ✨ ！！<Sat Apr 09>
 
-✅ 使用[vercel](https://vercel.com/)实现自动化部署 <Thu Apr 28>
+✅ 迁移到阿里云 ECS（nginx 静态托管 + Let's Encrypt），由 GitHub Actions 自动构建发布；博主另有 `/admin` 纯静态后台，走 GitHub API 直接改仓库 <Tue Oct 20>
 
 ## 关于commit
 

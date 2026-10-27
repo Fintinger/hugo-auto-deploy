@@ -45,7 +45,7 @@
 ### Headers
 
 - ✅ 仅 `/admin/*` 应用 CSP / X-Frame-Options / X-Content-Type-Options / Referrer-Policy / Permissions-Policy / X-Robots-Tag
-- ✅ 通过 `vercel.json` 配置，**不**通过 `<meta>` 单独提供
+- ✅ 由 nginx snippet 提供（仓库内 `deploy/nginx/blog-admin-headers.conf`，服务器上 `/etc/nginx/snippets/blog-admin-headers.conf`）；`<meta>` 仅兜底且需与 header CSP 保持一致
 - ✅ CSP 不含 `data:`（Stage 10 收口）
 
 ### Image
@@ -76,14 +76,14 @@
 3. 修改 Admin → `node --check` 全部 JS → `node tools/admin-static-check.js` → `.\hugo.exe` → 安全扫描
 4. 更新 `docs/CHANGELOG_AI.md`
 5. 输出 Git commit 建议 → 等待用户确认 → **不**自动 commit
-6. 修改 Vercel 配置（`vercel.json`）→ 重新计算 SRI hash
+6. 修改 `/admin` 安全头（`deploy/nginx/blog-admin-headers.conf`）→ 同步服务器 snippet → `nginx -t` + reload + `curl -I` 核对；升级依赖时重新计算 SRI hash
 
 ## 测试纪律
 
 - ✅ 代码级静态检查必做
 - ✅ 单元测试必做（`node` 直接跑）
 - ✅ Hugo 构建必跑
-- ❌ **不**引入 npm / Node build pipeline / Vite / ESLint / Jest / Playwright / GitHub Actions
+- ❌ **不**引入 npm / Node build pipeline / Vite / ESLint / Jest / Playwright / 测试类 GitHub Actions（部署用的 `.github/workflows/deploy.yml` 除外）
 - ⏳ 生产浏览器 E2E 必由**用户**执行（AI 无浏览器能力）
 - 测试文章路径：`e2e-test.*`，完成后**必须**用 Admin 删除功能清理
 

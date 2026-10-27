@@ -161,6 +161,13 @@ AI 完成修改后**不直接提交**，必须先输出以下内容：
 
 - 构建通过 + 文章 permalink、图片、shortcode 正常渲染。
 
+### 部署配置（nginx / workflow）修改后必须执行
+
+- **nginx**：服务器上 `nginx -t` 通过后才 `systemctl reload nginx`；失败用 `/root/nginx-backups/` 回滚。
+- **线上核对**：`curl -I https://blog.archai.space/admin/` 应含 CSP / X-Frame-Options / X-Robots-Tag / Permissions-Policy / Referrer-Policy / HSTS；`curl -I https://blog.archai.space/` 不应出现 CSP。
+- **静态检查**：`node tools/admin-static-check.js` 全绿（含 snippet 完整性 + header/meta CSP 漂移校验）。
+- **workflow**：改动后先 `workflow_dispatch` 手动跑一次，确认构建与 rsync 成功再 push。
+
 ---
 
 ## 7. 发布流程
@@ -168,5 +175,6 @@ AI 完成修改后**不直接提交**，必须先输出以下内容：
 1. 本地执行 `.\hugo.exe` 构建验证通过。
 2. 按 §2 规范分类型、小粒度提交（每次 commit 边界清晰）。
 3. push 到 GitHub `main` 分支（可用 `push.sh`，但先确认 commit 信息正确）。
-4. Vercel 自动构建部署。
-5. 访问 `https://blog.archai.space` 验证线上效果。
+4. GitHub Actions（`.github/workflows/deploy.yml`）自动 Hugo 构建并 `rsync` 到阿里云 ECS `/var/www/blog/`。
+5. 访问 `https://blog.archai.space` 验证线上效果（部署细节与排障见 `docs/DEPLOYMENT.md`）。
+6. `/admin` 相关改动额外核对 `/admin/` 页面可正常加载、Console 无 CSP 报错。

@@ -40,6 +40,12 @@
 - 最终兜底脚本用 `finally.js`（单独 minify、最后执行），用于覆盖主题默认行为。
 - 用原生 JS，不引入 npm/打包工具链。
 
+### 部署（阿里云 ECS / nginx）规范
+- 部署唯一通道是 `.github/workflows/deploy.yml`：push `main` → Hugo 构建 → `rsync --delete` 到 `/var/www/blog/`。不要手动 scp 覆盖线上，也不要新增第二套部署通道。
+- `/admin` 的 HTTP 安全头只维护 `deploy/nginx/blog-admin-headers.conf`（服务器上 `/etc/nginx/snippets/blog-admin-headers.conf` 为同一份）；改后必须 `nginx -t` → reload → `curl -I` 核对。`static/admin/index.html` 的 meta CSP 仅兜底，需同步。
+- 服务器上还有 `music.archai.space`、guacamole 两个站点：只改 blog vhost，不要动其它站点配置。
+- `deploy/nginx/blog.conf` 是线上 vhost 副本，改动后需与服务器保持一致；细节见 `docs/DEPLOYMENT.md`。
+
 ### 内容规范
 - 文章在 `content/posts/`，按 `年/月/日` 目录放 `index.md`（或具名 `.md`）。
 - front matter：`title`、`date`、`categories`、`tags`。

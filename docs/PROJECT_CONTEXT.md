@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md
 
 > 本项目长期知识库。任何 AI 模型首次接手本仓库时，请先完整阅读本文件。
-> 最后更新：2026-08-30（V1 收官：补 Admin CMS 架构 + 已知问题更新）
+> 最后更新：2026-10-27（部署收尾：阿里云 ECS 为唯一线上路径、Vercel 退役、`/admin` 安全头迁至 nginx）
 
 ---
 
@@ -66,9 +66,12 @@
 
 ### 部署
 
-- **GitHub → Vercel 自动部署**，无手动部署脚本。
-- `public/` 被 `.gitignore`，构建产物不进入源码仓库。
-- 无 Docker / 无 CI 配置文件（Vercel 侧配置，不在仓库内）。
+- **GitHub Actions → 阿里云 ECS（nginx）自动部署**：push `main` 触发 `.github/workflows/deploy.yml`，Hugo v0.83.0 构建后 `rsync --delete` 到 ECS `/var/www/blog/`。
+- 线上域名 `https://blog.archai.space`：阿里云 北京（39.96.78.231），nginx 1.24 + Let's Encrypt 证书。
+- 所需 GitHub Secrets：`DEPLOY_HOST` / `DEPLOY_USER` / `DEPLOY_SSH_KEY`。
+- nginx 站点配置 `/etc/nginx/sites-available/blog`，`/admin` 安全头 snippet `/etc/nginx/snippets/blog-admin-headers.conf`；两者在仓库内有副本 `deploy/nginx/`。
+- `public/` 被 `.gitignore`，构建产物不进入源码仓库；无 Docker。
+- 部署/排障细节见 `docs/DEPLOYMENT.md`（含服务器路径、curl 核对、回滚）。
 
 ---
 
@@ -89,7 +92,18 @@ hugo-auto-deploy/
 │   ├── AI_RULES.md           # AI 修改代码的约束规范
 │   ├── ARCHITECTURE_DECISIONS.md  # 架构决策记录（ADR）
 │   ├── CHANGELOG_AI.md       # AI 参与开发的改动日志
+│   ├── DEPLOYMENT.md         # 线上部署 runbook（阿里云 ECS / nginx / Actions）
 │   └── DEVELOPMENT_WORKFLOW.md   # 完整开发工作流（AI 协作/提交/测试/发布）
+│
+├── .github/workflows/
+│   └── deploy.yml            # push main → Hugo 构建 → rsync 到阿里云 ECS
+│
+├── deploy/nginx/             # 线上 nginx 配置（仓库副本，需与服务器一致）
+│   ├── blog.conf             # blog 站点 vhost
+│   └── blog-admin-headers.conf   # /admin 的 HTTP 安全头 snippet
+│
+├── tools/
+│   └── admin-static-check.js # Admin 静态检查（含 /admin 安全头与 CSP 漂移校验）
 │
 ├── content/                  # 全部 Markdown 内容
 │   ├── posts/                # 博客文章，按 年/月/日 目录组织
@@ -187,9 +201,11 @@ layouts/* (Go template 渲染)
         └── static/* → 原样拷贝
         ▼
 public/ (静态站点，gitignored)
-        │  push 到 GitHub
+        │  push 到 GitHub main
         ▼
-Vercel 自动部署 → https://blog.archai.space
+GitHub Actions：Hugo 构建 → rsync --delete
+        ▼
+阿里云 ECS /var/www/blog/ → nginx → https://blog.archai.space
 ```
 
 **运行时数据流（浏览器端）**：
@@ -227,7 +243,7 @@ Vercel 自动部署 → https://blog.archai.space
 
 ## 当前架构
 
-单仓库、纯静态、无构建脚本（除 Hugo 本身）、无 Node/npm、无 CI 文件。核心复杂度集中在 `themes/PaperMod/` 的定制模板与自定义 SCSS/JS。
+单仓库、纯静态、无构建脚本（除 Hugo 本身）、无 Node/npm；仅有一个部署用 GitHub Actions 工作流（`.github/workflows/deploy.yml`），无测试/打包类 CI。核心复杂度集中在 `themes/PaperMod/` 的定制模板与自定义 SCSS/JS。
 
 架构分层：
 1. **内容层**：`content/`（作者只改这里即可发文章）。
@@ -269,7 +285,9 @@ GitHub REST API (Contents API / Git Data API)
   ↓
 Fintinger/hugo-auto-deploy 仓库 main 分支
   ↓
-Vercel 自动构建
+GitHub Actions 自动构建
+  ↓
+阿里云 ECS /var/www/blog/（nginx）
   ↓
 blog.archai.space
 ```
@@ -289,7 +307,7 @@ API.updateFile（无图）或 commitChanges（含图）
   ↓
 main 分支推进
   ↓
-Vercel build → blog 更新
+GitHub Actions 构建 → rsync 到阿里云 → blog 更新
 ```
 
 **多文件原子提交（图片 + 文章）**：
@@ -372,3 +390,6 @@ Git Data API:
 7. 发布文章只改 `content/`，文章 permalink 为 `/p/:slug/`。
 8. 提交规范见 `DEVELOPMENT_WORKFLOW.md` §2（`feat`/`fix`/`refactor`/`docs`/`post`/`chore`），历史 emoji 约定（📑✨🛠️）可作辅助标记。
 9. 自定义 JS 统一放 `assets/js/extended/`，自定义 SCSS 统一放 `assets/scss/`，通过既有 pipeline 自动打包，勿直接在模板里写大段样式/脚本。
+10. **部署只走 `.github/workflows/deploy.yml`**：push `main` 即发布，不要手动 scp 覆盖线上、也不要新增第二套部署通道。
+11. **线上 nginx 配置与 `deploy/nginx/` 保持一致**：改动后先在服务器 `nginx -t` 再 `systemctl reload nginx`，并用 `curl -I https://blog.archai.space/admin/` 核对安全头；同机还有 `music.archai.space`、guacamole，别动它们的 vhost。详见 `docs/DEPLOYMENT.md`。
+12. **`/admin` 安全头的唯一事实来源是 `deploy/nginx/blog-admin-headers.conf`**；`static/admin/index.html` 的 meta CSP 仅兜底，两处需同步（`tools/admin-static-check.js` 会校验漂移）。
