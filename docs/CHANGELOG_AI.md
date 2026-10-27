@@ -1924,3 +1924,58 @@ GitHub 仓库已用 slug leaf bundle 存储新文章（`content/posts/YYYY/MM/DD
 **未自动 commit**——按用户要求。
 
 ---
+
+## 2026-10-27
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+阶段 14.5 — 编辑文章时的图片上传（补齐 Stage 9B 声称但从未落地的 `saveEditWithImages`）：
+
+1. **根因确认**：编辑模式「保存修改」只走 Contents API `updateFile` 更新 `.md`；`state.pendingUploads` 中 `formMode='edit'` 的图片从未被提交（`API.commitChanges` 唯一调用点在新建文章路径）。图片只存在于浏览器 `blob:` URL，GitHub 无文件、线上 404；保存成功后队列也不清空，二次保存提示「没有检测到修改」，图片永久卡死。
+2. **`saveEdit` 分发**：存在 edit pending 图片时改走新增的 `saveEditWithImages`；无图片时保持原 Contents API 流程不变。
+3. **`saveEditWithImages`（新增）**：
+   - `getBranch` → `getFile`（baseline 重校验）→ `getTree`（远端 blob 路径集合）→ `resolveFinalPendingNames`（重名自动 `-1`）→ `updateBodyReferencesForFinalNames`（正文同步改名）→ `commitChanges`（文章 + 图片单 commit，`force:false`）。
+   - 成功后只清理本次提交涉及的 edit pending（revoke object URL），更新 baseline，刷新预览与文章树；失败保留队列，可重试。
+   - 422 / baseline 冲突 → CONFLICT；新增 `showConflictWithLatest` 重新拉取最新远程内容，使「重新加载远程版本」基于真实最新版本（Contents API 409 同样适用）。
+4. **校验 preflight（在任何 API 调用之前）**：单图 ≤5MB、单次总 ≤20MB、类型复检、每张图片必须在正文中按 `![alt](index.assets/文件名)` **图片语法**引用；仅链接（缺 `!`）或未引用会阻止保存并给出明确提示。
+5. **不再短路**：正文/字段无变化但存在 edit pending 时允许保存（原逻辑直接 `noChange` 返回，图片永远无法提交；图片-only 保存会原样复用远程文章字节）。
+6. **修复 `updateBodyReferencesForFinalNames`**：原实现读取不存在的 `p.markdown`（发生重名时会抛 TypeError），改为 `p.markdownReference`；用户改过 alt 时回退为只替换 URL，保留用户文案；`$&` 等替换模式字符不再被解释。
+7. **`checkPendingReferences` 增加 `formMode` 过滤**：新建/编辑两个表单的 pending 不再互相干扰。
+8. **CRLF / 换行修复**：
+   - `FrontMatter.patch` 只看到 FM 块；单行 FM 在 CRLF 文档中追加字段会混入 LF。保存前把 patched FM 归一化为文档换行。
+   - 修正原 `/(\\r?\\n)$/` 的多余转义（真实换行永远匹配不到，导致每次保存多补一个空行）。
+9. **`beforeunload`**：edit 表单 dirty 纳入离开保护（原仅新建表单 `state.formDirty` 与 pending）。
+10. **`tools/admin-static-check.js`**：b630744 改为自托管第三方库后，旧「必须有 jsDelivr URL + SRI」检查失效（0 CDN → FAIL）；改为检查「无远程 script/link」+ 4 个 `/libs/*` 自托管文件存在。
+
+### 修改文件
+
+- `static/admin/js/app.js`（saveEdit 分发 / 编辑图片原子提交与 preflight / 引用改名 / 冲突刷新 / CRLF / beforeunload）
+- `tools/admin-static-check.js`（第三方资源检查）
+- `docs/PROJECT_CONTEXT.md`（Admin 数据流：编辑模式图片提交）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+用户 2026-10-27 13:42 的 Admin 编辑提交 `5e8354c` 只包含 `content/posts/2026/08/10/index.md`，正文新增的 `[3D卡片](index.assets/PixPin_2026-10-27_13-38-56.png)` 指向的图片从未上传（GitHub raw 与线上均 404）。根因是编辑模式图片上传自 V1 起未实现：Stage 9B CHANGELOG 声称的 `saveEditWithImages` 与 dispatch 逻辑在代码中从未存在。本次按方案 A 补齐，避免继续静默丢图。
+
+### 测试结果
+
+- `node --check`：7 个 admin JS 全部通过
+- `node tools/admin-static-check.js`：**0 失败**（含 Hugo BUILD_OK）
+- 临时 Node 断言测试（未入库，已删除）：
+  - 纯函数断言 34 项：图片语法 / 仅链接 / 未引用检测、正则转义、重名 `-1`、引用改名（含 `$&` alt）、CRLF、preflight（5MB / 20MB / 链接 / 缺失）
+  - 集成模拟（stub GitHub API）4 个场景：正常提交（文章 + 图片单 commit、改名、队列精确清理、revoke、banner、reload）、baseline 冲突、422 冲突、noChange 图片-only 保留原文
+- `.\hugo.exe`：BUILD_OK
+- 待用户生产 E2E：编辑文章 → 插入图片 → 保存 → 一个 commit 含 `.md` + `index.assets/图`；线上图片 URL 200；仅链接引用会被阻止
+
+### 注意事项
+
+- 编辑图片上传使用 Git Data API，PAT 仍只需 `Contents: Read and write`，无需新权限。
+- 仍未修改 `content/` 中任何既有文章；本次未自动 commit。
+- 用户当前那篇文章正文仍是普通链接且图片不在仓库，需重新在 Admin 插入真实截图（或手动补文件并把 `[...]` 改为 `![...]`）后再次保存。
+- 重名策略会改写正文引用（同步 `index.assets/name-1.ext`），alt 文本保留。
+- 旧文章结构（legacy 4 段）仍不允许上传图片，由 `addPendingUpload` 明确拒绝。
+
+---

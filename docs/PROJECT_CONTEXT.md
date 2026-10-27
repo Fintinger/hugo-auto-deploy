@@ -285,7 +285,7 @@ latestRaw === originalRaw ? 否则 CONFLICT UI
   ↓
 FrontMatter.patch + body 拼接
   ↓
-API.updateFile 或 commitChanges
+API.updateFile（无图）或 commitChanges（含图）
   ↓
 main 分支推进
   ↓
@@ -293,6 +293,10 @@ Vercel build → blog 更新
 ```
 
 **多文件原子提交（图片 + 文章）**：
+
+> Stage 14.5（2026-10-27）起，**编辑文章**同样支持图片原子提交：
+> `saveEdit` 检测到 edit 模式的 pending 图片时走同一 `commitChanges`
+> 路径；没有待上传图片时仍使用 Contents API `updateFile`。
 
 ```
 Stage 9A pendingUploads 队列
