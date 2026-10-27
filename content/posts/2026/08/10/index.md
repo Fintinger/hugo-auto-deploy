@@ -195,7 +195,7 @@ previous/next 卡片有 `rotateY(±48deg)` 3D 变换，倒影需要额外处理�
 
 ## 最终效果
 
-[3D卡片](index.assets/PixPin_2026-10-27_13-38-56.png)
+![3D卡片的镜面倒影效果](index.assets/3D卡片的镜面倒影效果.png)
 
 访问[Acmusic](https://music.archai.space/)查看（需登录）
 
