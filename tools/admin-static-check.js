@@ -134,18 +134,48 @@ sriMatches.forEach(function (full) {
         isBase64Url ? 'contains URL-safe chars' : '');
 });
 
-// 4. vercel.json valid JSON
-console.log('\n[4] vercel.json');
+// 4. /admin HTTP security headers (nginx snippet; vercel.json retired 2026-10-27,
+//    site now served by Aliyun ECS + nginx — see docs/DEPLOYMENT.md)
+console.log('\n[4] /admin HTTP security headers (nginx snippet)');
+var SNIPPET = 'deploy/nginx/blog-admin-headers.conf';
+var requiredHeaders = [
+    'Content-Security-Policy',
+    'X-Content-Type-Options',
+    'X-Frame-Options',
+    'Referrer-Policy',
+    'Permissions-Policy',
+    'X-Robots-Tag',
+    'Strict-Transport-Security'
+];
+var snippet = '';
 try {
-    var v = JSON.parse(read('vercel.json'));
-    check('vercel.json valid JSON', true);
-    check('vercel.json has /admin rule',
-        v.headers.some(function (h) { return h.source === '/admin'; }));
-    check('vercel.json has /admin/(.*) rule',
-        v.headers.some(function (h) { return h.source === '/admin/(.*)'; }));
+    snippet = read(SNIPPET);
+    check(SNIPPET + ' exists', true);
+    requiredHeaders.forEach(function (h) {
+        check(SNIPPET + ' has ' + h, snippet.indexOf('add_header ' + h) >= 0);
+    });
+    check('snippet CSP sets frame-ancestors none',
+        snippet.indexOf("frame-ancestors 'none'") >= 0);
 } catch (e) {
-    check('vercel.json valid JSON', false, e.message);
+    check(SNIPPET + ' exists', false, e.message);
 }
+
+check('index.html meta CSP fallback present',
+    indexHtml.indexOf('http-equiv="Content-Security-Policy"') >= 0);
+
+// Header CSP and meta CSP must stay aligned (meta is fallback only). The header
+// may add frame-ancestors, which <meta> cannot express.
+function normalizeCsp(s) {
+    return s.replace(/;\s*$/, '').split(';')
+        .map(function (d) { return d.trim(); })
+        .filter(function (d) { return d && d.indexOf('frame-ancestors') !== 0; })
+        .sort().join('; ');
+}
+var headerCsp = (snippet.match(/Content-Security-Policy "([^"]+)"/) || [])[1] || '';
+var metaCsp = (indexHtml.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/) || [])[1] || '';
+check('header CSP matches meta CSP (frame-ancestors excluded)',
+    headerCsp !== '' && metaCsp !== '' && normalizeCsp(headerCsp) === normalizeCsp(metaCsp),
+    headerCsp === '' || metaCsp === '' ? 'CSP not found' : 'header/meta CSP drifted');
 
 // 5. JS syntax
 console.log('\n[5] JS syntax');

@@ -1,0 +1,2 @@
+# nginx 配置以 LF 存储：服务器直接使用仓库副本（见 docs/DEPLOYMENT.md），避免 CRLF 带来的解析问题
+deploy/nginx/** text eol=lf
