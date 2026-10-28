@@ -1,7 +1,7 @@
 # DEPLOYMENT.md
 
 > 线上部署事实来源（runbook）。改动部署相关配置前必须读本文件，并同步 `deploy/nginx/` 下的仓库副本。
-> 最后更新：2026-10-27（部署迁至阿里云后的收尾：Vercel 退役，`/admin` 安全头改由 nginx 提供）
+> 最后更新：2026-10-28（新增自定义 404：Hugo 生成 `public/404.html`，vhost 增加 `error_page 404`）
 
 ---
 
@@ -59,6 +59,22 @@ https://blog.archai.space（Let's Encrypt 证书）
 | `/etc/nginx/snippets/blog-admin-headers.conf` | `/admin` 的 HTTP 安全头 | `deploy/nginx/blog-admin-headers.conf` |
 | `/var/www/blog/` | 静态站点根目录（由 Actions rsync 写入） | —（构建产物，gitignored） |
 | `/root/nginx-backups/` | vhost 改动前的备份 | — |
+
+**自定义 404**：Hugo 会生成 `public/404.html`；vhost 需要：
+
+```nginx
+error_page 404 /404.html;
+location = /404.html {
+    internal;
+}
+```
+
+仅改仓库副本不会立即生效；按 §4 的流程同步 `blog.conf` 到服务器、`nginx -t` 通过后再 reload。线上核对：
+
+```bash
+curl -sI https://blog.archai.space/this-path-does-not-exist | head -n 1   # HTTP/2 404
+curl -s https://blog.archai.space/this-path-does-not-exist | grep -o '这条路径没有内容'
+```
 
 ---
 

@@ -157,6 +157,8 @@ hugo-auto-deploy/
 | `partials/extend_footer.html` | 合并 `js/extended/*.js` + 最后执行 `finally.js` |
 
 > 2026-10 首页 V1：项目级 `layouts/partials/index_profile.html` 覆盖主题的 `partials/index_profile.html`（主题文件不改）；首页仍由 `_default/list.html` 的 `profileMode` 分支触发，模板读取 `static/data/lists.json` 渲染 Extra 项目架。
+>
+> 2026-10 自定义 404：项目级 `layouts/404.html` 覆盖主题极简 404；样式在 `assets/scss/common/content.scss` 的 `.error-page`；线上由 nginx `error_page 404 /404.html` 提供（见 `docs/DEPLOYMENT.md`）。
 
 ### 2. 样式层（`assets/scss/`）
 

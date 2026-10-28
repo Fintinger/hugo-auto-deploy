@@ -2741,3 +2741,42 @@ GitHub 仓库已用 slug leaf bundle 存储新文章（`content/posts/YYYY/MM/DD
 - 置顶沿用 `weight`；已置顶且 `weight > 1` 的文章保持原值，取消置顶则删除该字段。
 - 仍需用户在真实 GitHub PAT 环境做浏览器 E2E：编辑→新建不再叠加、置顶保存、发布/删除、抽屉内图片上传。
 - 本次只改前端布局与 admin 字段映射，部署安全头/CSP 未变。
+---
+
+## 2026-10-28（自定义 404 页）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- 新增项目级 `layouts/404.html`，覆盖主题原生 `.not-found`（仅一个大号 404）；使用与首页/内容页一致的深色玻璃卡、紫色强调和 Inter + JetBrains Mono。
+- 404 内容：大号 `404`、`HTTP 404 · NOT FOUND`、标题「这条路径没有内容」、说明文案、回到首页 / 搜索全站按钮，以及全部文章 / 归档 / 分类 / 关于的保底导航。
+- 「搜索全站」链接到 `/search/`，继续复用全站搜索遮罩层的全局委托（`a[href$="/search/"]`），JS 不可用时回退到搜索页。
+- `assets/scss/common/content.scss` 新增 `.error-page` 样式：桌面深色玻璃 + 渐变 404，移动端回退到主题变量的浅色卡片；560px 以下按钮单列。
+- `deploy/nginx/blog.conf` 增加 `error_page 404 /404.html;` 与 `location = /404.html { internal; }`，让 nginx 的 404 使用 Hugo 生成的页面；保留 404 状态码。
+- `docs/DEPLOYMENT.md` 记录 404 的 nginx 配置、同步与线上核对命令；`docs/PROJECT_CONTEXT.md` 记录模板/样式位置。
+
+### 修改文件
+
+- `layouts/404.html`（新增）
+- `assets/scss/common/content.scss`
+- `deploy/nginx/blog.conf`
+- `docs/DEPLOYMENT.md`
+- `docs/PROJECT_CONTEXT.md`
+- `docs/design-preview/README.md`
+- `docs/design-preview/impl-404-1440.png`（新增）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- `.\hugo.exe --gc --minify`：**BUILD_OK**，生成 `public/404.html`，包含 `.error-page` 与导航。
+- Edge headless 1440×1000 预览 `/404.html`：深色玻璃卡、渐变 404、按钮与保底导航正常；截图 `docs/design-preview/impl-404-1440.png`；`curl` 返回 200。
+- Hugo dev server 对不存在路径返回的是 Hugo 自带的 `404 page not found`（开发服务器不读取项目 404 模板）；线上必须依赖 nginx `error_page`，见注意事项。
+- 未运行 `nginx -t`（本机无 nginx）；配置为标准 `error_page` + internal location 写法。
+
+### 注意事项
+
+- **需要把 `deploy/nginx/blog.conf` 同步到服务器**：`/etc/nginx/sites-available/blog` 替换后 `nginx -t` 通过再 `systemctl reload nginx`，否则线上仍是 nginx 默认 404。
+- 线上核对：`curl -sI https://blog.archai.space/this-path-does-not-exist | head -n 1` 应为 `HTTP/2 404`，且响应正文包含「这条路径没有内容」。
+- 404 页使用现有全站搜索；若后续改搜索触发方式，需要同步保留 `/search/` 回退链接。
+- 未修改 `themes/PaperMod/`、`content/`、`config.yml`；未 commit / push。

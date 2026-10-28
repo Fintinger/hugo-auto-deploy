@@ -313,3 +313,12 @@
 - 间距 token 4/8/12/16/24/32/48/64；H2 48/16、H3 32/12、H4 24/8、段落 24、引用 24、hr 48。
 - 组件：代码块头部（语言标签 + 复制按钮）、callout（NOTE/TIP/WARNING/IMPORTANT/CAUTION）、details、脚注、图片 figure、表格滚动。
 - 代码复制事件委托，不依赖主题脚本；主题目录未修改。
+
+---
+
+## 2026-10-28 自定义 404
+
+- 项目级 `layouts/404.html` 覆盖主题极简 404；`.error-page` 沿用首页/内容页的深色玻璃 + 紫色强调，桌面为 404 渐变字 + 说明/操作双栏，窄屏回到浅色主题卡片。
+- 操作：回到首页、搜索全站（复用 `/search/` 遮罩）、全部文章 / 归档 / 分类 / 关于。
+- 线上需要 nginx `error_page 404 /404.html;` + `location = /404.html { internal; }`；仓库副本在 `deploy/nginx/blog.conf`，服务器同步并 reload 后才生效。见 `docs/DEPLOYMENT.md`。
+- 截图：`impl-404-1440.png`（开发服务器直接打开 `/404.html`）。
