@@ -1,0 +1,26 @@
+{{- define "main" }}
+<section class="error-page" aria-labelledby="error-title">
+  <div class="error-page-code" aria-hidden="true">
+    <span>404</span>
+  </div>
+  <div class="error-page-main">
+    <p class="error-kicker">HTTP 404 · NOT FOUND</p>
+    <h1 class="error-title" id="error-title">这条路径没有内容</h1>
+    <p class="error-copy">
+      页面可能被移动、删除，或者链接少了一个字符。
+      如果是从旧链接进来的，它大概已经搬到了别处。
+    </p>
+    <div class="error-actions">
+      <a class="error-action error-action-primary" href="{{ "/" | relURL }}">回到首页</a>
+      <a class="error-action" href="{{ "search/" | relURL }}">搜索全站</a>
+    </div>
+    <nav class="error-links" aria-label="404 页面导航">
+      <span class="error-links-label">或者从这些地方开始</span>
+      <a href="{{ "posts/" | relURL }}">全部文章</a>
+      <a href="{{ "archives/" | relURL }}">归档</a>
+      <a href="{{ "categories/" | relURL }}">分类</a>
+      <a href="{{ "about/" | relURL }}">关于</a>
+    </nav>
+  </div>
+</section>
+{{- end }}{{/* end main */ -}}
