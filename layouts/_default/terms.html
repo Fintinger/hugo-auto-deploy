@@ -1,0 +1,37 @@
+{{- define "main" }}
+
+{{- $isTags := eq .Type "tags" -}}
+{{- $typeLabel := cond $isTags "标签" "分类" -}}
+
+<header class="page-header content-page-header">
+  {{ partial "breadcrumbs.html" . }}
+  <div class="content-page-head">
+    <div>
+      <p class="content-kicker">{{ if $isTags }}TAGS{{ else }}CATEGORIES{{ end }}</p>
+      <h1>{{ $typeLabel }}</h1>
+    </div>
+    <span class="content-count">{{ len .Data.Terms }} 个</span>
+  </div>
+  <p class="content-subtitle">
+    {{- if $isTags -}}
+      按主题浏览全部标签，点进去查看该标签下的文章。
+    {{- else -}}
+      按方向浏览全部分类，点进去查看该分类下的文章。
+    {{- end -}}
+  </p>
+</header>
+
+<div class="term-grid">
+  {{- range .Data.Terms.ByCount }}
+  <a class="term-card" href="{{ .Page.RelPermalink }}">
+    <span class="term-name">{{ .Page.LinkTitle }}</span>
+    <span class="term-count">{{ printf "%02d" .Count }}</span>
+  </a>
+  {{- end }}
+</div>
+
+{{- if .Content }}
+<div class="post-content term-content">{{ .Content }}</div>
+{{- end }}
+
+{{- end }}{{/* end main */}}

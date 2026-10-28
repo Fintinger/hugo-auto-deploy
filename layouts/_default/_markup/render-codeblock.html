@@ -1,0 +1,8 @@
+{{- $lang := .Type | default "text" -}}
+<div class="code-block">
+  <div class="code-head">
+    <span class="code-lang">{{ $lang }}</span>
+    <button class="code-copy" type="button" data-code-copy>复制</button>
+  </div>
+  <div class="code-body">{{ .Inner }}</div>
+</div>

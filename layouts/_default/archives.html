@@ -1,0 +1,42 @@
+{{- define "main" }}
+
+{{- $pages := where site.RegularPages "Type" "posts" -}}
+{{- $pages = $pages.ByDate.Reverse -}}
+{{- $firstYear := "" -}}
+{{- with $pages }}{{ $firstYear = (index ($pages.ByDate) 0).Date.Format "2006" }}{{ end -}}
+
+<header class="page-header content-page-header">
+  {{ partial "breadcrumbs.html" . }}
+  <div class="content-page-head">
+    <div>
+      <p class="content-kicker">ARCHIVE</p>
+      <h1>归档</h1>
+    </div>
+    <span class="content-count">{{ len $pages }} 篇</span>
+  </div>
+  <p class="content-subtitle">从 {{ $firstYear }} 年开始写 · 共 {{ len $pages }} 篇文章</p>
+</header>
+
+<div class="archive-timeline">
+  {{- range $pages.GroupByDate "2006" }}
+  <section class="archive-year" id="year-{{ .Key }}">
+    <div class="archive-year-head">
+      <h2>{{ .Key }}</h2>
+      <span>{{ len .Pages }} 篇</span>
+    </div>
+    <div class="archive-line">
+      {{- range .Pages }}
+      <a class="archive-item" href="{{ .RelPermalink }}">
+        <span class="archive-dot" aria-hidden="true"></span>
+        <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "01.02" }}</time>
+        <span class="archive-title">{{ .Title }}</span>
+        {{- with .Params.categories }}<span class="archive-cat">{{ index . 0 }}</span>{{ end }}
+        <span class="archive-time">{{ .ReadingTime }} min</span>
+      </a>
+      {{- end }}
+    </div>
+  </section>
+  {{- end }}
+</div>
+
+{{- end }}{{/* end main */}}

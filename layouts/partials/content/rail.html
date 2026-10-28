@@ -1,0 +1,10 @@
+{{- $isPosts := or (eq .Section "posts") (eq .Type "posts") -}}
+{{- $isArchive := or (eq .Layout "archives") (strings.HasSuffix .RelPermalink "/archives/") -}}
+{{- $isTax := or (in (slice "categories" "tags") .Section) (in (slice "categories" "tags") .Type) -}}
+{{- $isAbout := strings.HasSuffix .RelPermalink "/about/" -}}
+<nav class="content-rail" aria-label="内容导航">
+  <a href="{{ "posts/" | relURL }}"{{ if $isPosts }} class="is-active" aria-current="page"{{ end }}>文章</a>
+  <a href="{{ "archives/" | relURL }}"{{ if $isArchive }} class="is-active" aria-current="page"{{ end }}>归档</a>
+  <a href="{{ "categories/" | relURL }}"{{ if $isTax }} class="is-active" aria-current="page"{{ end }}>分类</a>
+  <a href="{{ "about/" | relURL }}"{{ if $isAbout }} class="is-active" aria-current="page"{{ end }}>关于</a>
+</nav>

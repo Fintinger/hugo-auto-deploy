@@ -50,6 +50,7 @@
       "url": "https://music.archai.space/",
       "des": "Vue+axios相关技术做的一款PC网页端音乐播放器",
       "img": "/images/extra/acmusic.png",
+      "thumb": "/images/extra/thumbs/acmusic.webp",
       "githubLink": "https://github.com/Fintinger/ACMUSIC",
       "downloadLink": "https://github.com/Fintinger/ACMUSIC/archive/refs/heads/master.zip",
       "pinned": true,

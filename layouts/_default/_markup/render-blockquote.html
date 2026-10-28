@@ -1,0 +1,16 @@
+{{- $text := .Text -}}
+{{- $type := "" -}}
+{{- range slice "NOTE" "TIP" "WARNING" "IMPORTANT" "CAUTION" -}}
+  {{- if and (not $type) (strings.HasPrefix (strings.TrimLeft " \n" $text) (printf "<p>[!%s]" .)) -}}
+    {{- $type = lower . -}}
+  {{- end -}}
+{{- end -}}
+{{- if $type -}}
+  {{- $text = replaceRE (printf "(?s)^\\s*<p>\\[!%s\\]\\s*" (upper $type)) "<p>" $text -}}
+  <div class="callout callout-{{ $type }}">
+    <div class="callout-label">{{ $type }}</div>
+    {{ $text | safeHTML }}
+  </div>
+{{- else -}}
+  <blockquote>{{ $text | safeHTML }}</blockquote>
+{{- end -}}

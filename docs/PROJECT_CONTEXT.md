@@ -156,16 +156,20 @@ hugo-auto-deploy/
 | `partials/extend_head.html` | 编译 SCSS + 合并 external CSS |
 | `partials/extend_footer.html` | 合并 `js/extended/*.js` + 最后执行 `finally.js` |
 
+> 2026-10 首页 V1：项目级 `layouts/partials/index_profile.html` 覆盖主题的 `partials/index_profile.html`（主题文件不改）；首页仍由 `_default/list.html` 的 `profileMode` 分支触发，模板读取 `static/data/lists.json` 渲染 Extra 项目架。
+
 ### 2. 样式层（`assets/scss/`）
 
 - `style.scss`：入口，`@import` common 下 5 个 + mobile + dark。
-- `common/homepage.scss`：首页动效（背景视频、profile 透明 hover、菜单动效）。
+- `common/homepage.scss`：首页动效（背景视频、profile 透明 hover、菜单动效）。**主题旧版；首页现由项目级同名文件覆盖。**
 - `common/article.scss`：文章内链接样式。
 - `common/articleList.scss`：列表卡片 `pinned`/`newest` 角标样式。
 - `common/comment.scss`：Valine 评论区深度定制。
-- `common/custom.scss`：菜单/按钮/卡片 hover 微调。
+- `common/custom.scss`：菜单/按钮/卡片 hover 微调。**主题旧版；项目级同名文件已重写导航/品牌/搜索胶囊。**
 - `mobile.scss`：移动端抽屉导航。
 - `dark.scss`：深色模式覆盖 + hljs 配色。
+
+> 2026-10 首页 V1：项目级 `assets/scss/common/homepage.scss`（一屏海报 + 项目架 + 移动端）与 `custom.scss`（紫色品牌点、导航、搜索胶囊、非首页边距）覆盖主题同名文件；主题 `style.scss` 仍负责 import，Hugo 资源优先取项目级文件。设计稿与实现截图在 `docs/design-preview/`。
 
 ### 3. 脚本层（`assets/js/extended/`）
 

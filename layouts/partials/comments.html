@@ -1,0 +1,37 @@
+<section class="comments-wrap">
+  <header class="comments-head">
+    <h2 class="comments-title">评论</h2>
+    <span class="comments-note">WALINE</span>
+  </header>
+
+  <link rel="stylesheet" href="/libs/waline/waline.css" />
+  <div id="waline"></div>
+  <div id="waline-status" class="waline-status" hidden>
+    评论组件加载失败。当前评论后端在 Vercel，国内网络通常无法直连；可以把 Waline 后端迁到国内 VPS 或腾讯云，详见 <code>docs/COMMENTS.md</code>。
+  </div>
+</section>
+
+<script type="module">
+  import { init } from '/libs/waline/waline.js';
+
+  const status = document.getElementById('waline-status');
+  const showFallback = () => {
+    if (status) status.hidden = false;
+  };
+
+  const timer = setTimeout(() => {
+    const ready = document.querySelector('#waline .wl-comment, #waline .wl-empty, #waline .wl-cards');
+    if (!ready) showFallback();
+  }, 8000);
+
+  try {
+    init({
+      el: '#waline',
+      serverURL: 'https://waline-comments-liart.vercel.app/',
+      path: window.location.pathname,
+    });
+  } catch (error) {
+    clearTimeout(timer);
+    showFallback();
+  }
+</script>

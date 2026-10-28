@@ -1,0 +1,209 @@
+{{- /* 首页：Bento / 玻璃卡片布局（参考 2026-10-28 版本）；移动端保留原始 profile 名片 */ -}}
+{{- $profile := .Site.Params.profileMode -}}
+{{- $projects := slice -}}
+{{- with readFile "static/data/lists.json" -}}
+  {{- $data := . | transform.Unmarshal -}}
+  {{- with $data.lists -}}{{- $projects = . -}}{{- end -}}
+{{- end -}}
+{{- $pinned := where $projects "pinned" true -}}
+{{- $rest := where $projects "pinned" "ne" true -}}
+{{- $ordered := slice -}}
+{{- range $pinned -}}{{- $ordered = $ordered | append . -}}{{- end -}}
+{{- range $rest -}}{{- $ordered = $ordered | append . -}}{{- end -}}
+{{- $extraProjects := first 4 $ordered -}}
+
+{{- $posts := where .Site.RegularPages "Type" "posts" -}}
+{{- $posts = $posts.ByDate.Reverse -}}
+{{- $postCount := len $posts -}}
+{{- $categoryCount := len .Site.Taxonomies.categories -}}
+{{- $latestPosts := first 4 $posts -}}
+{{- $latestDate := "" -}}
+{{- $firstYear := "" -}}
+{{- with $latestPosts -}}{{- $latestDate = (index . 0).Date.Format "2006.01.02" -}}{{- end -}}
+{{- with $posts -}}{{- $firstYear = (index ($posts.ByDate) 0).Date.Format "2006" -}}{{- end -}}
+
+{{- $categories := first 5 .Site.Taxonomies.categories.ByCount -}}
+{{- $tags := first 5 .Site.Taxonomies.tags.ByCount -}}
+
+{{- $yearGroups := $posts.GroupByDate "2006" -}}
+{{- $maxYearCount := 1 -}}
+{{- range $yearGroups -}}
+  {{- if gt (len .Pages) $maxYearCount -}}{{- $maxYearCount = len .Pages -}}{{- end -}}
+{{- end -}}
+
+{{- $socialOrder := slice "github" "juejin" "zhihu" "bilibili" "qq" "vx" -}}
+{{- $socialLabels := dict "github" "GitHub" "juejin" "掘金" "zhihu" "知乎" "bilibili" "Bilibili" "qq" "QQ" "vx" "微信" -}}
+
+<div class="home-poster" aria-hidden="true"></div>
+<div class="home-scrim" aria-hidden="true"></div>
+
+<div class="profile home-profile">
+  {{- /* 移动端：原始纯色 profile 名片 */ -}}
+  <div class="profile_inner">
+    <img src="{{ "images/head.gif" | relURL }}" alt="my image" height="150" width="150">
+    <h1>{{ $profile.title | default "ARCHAI" }}</h1>
+    <span></span>
+    {{ partial "social_icons.html" .Site.Params.socialIcons }}
+    <div class="buttons">
+      <a class="button" href="{{ "posts/" | relURL }}" rel="noopener" title="Posts">
+        <span class="button-inner">Posts</span>
+      </a>
+      <a class="button" href="{{ "extra/" | relURL }}" rel="noopener" title="Extra">
+        <span class="button-inner">Extra</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="home-desktop">
+    <div class="home-dash">
+      <section class="dash-top">
+        <article class="dash-card hero-card">
+          <div class="hero-head">
+            <img class="hero-avatar" src="{{ "images/head.gif" | relURL }}" alt="Archai" width="112" height="112">
+            <div class="hero-id">
+              <h1>{{ $profile.title | default "ARCHAI" }}<span class="dot">.</span></h1>
+              <p>@archai · XIAN, CN</p>
+            </div>
+          </div>
+
+          {{- with $profile.bio }}<p class="hero-bio">{{ . }}</p>{{- end }}
+
+          <div class="hero-stats">
+            <span><b>{{ $postCount }}</b> 篇文章</span>
+            <span><b>{{ $categoryCount }}</b> 个分类</span>
+            <span><b>{{ $firstYear }}</b> 开始写</span>
+          </div>
+
+          <div class="hero-bottom">
+            <div class="hero-socials">
+              {{- range $socialOrder }}
+                {{- $name := . -}}
+                {{- with where $.Site.Params.socialIcons "name" $name -}}
+                  {{- $icon := index . 0 -}}
+                  <a href="{{ $icon.url }}" target="_blank" rel="noopener noreferrer me">{{ index $socialLabels $name }}</a>
+                {{- end -}}
+              {{- end }}
+              <a href="{{ "index.xml" | relURL }}">RSS</a>
+            </div>
+
+            {{- with $profile.buttons }}
+            <div class="hero-actions">
+              {{- range $i, $b := . }}
+              <a class="hero-btn {{ if eq $i 0 }}primary{{ else }}ghost{{ end }}" href="{{ $b.url | relURL }}">
+                {{- $b.name -}}
+                {{- if eq $i 0 }}
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>
+                {{- end }}
+              </a>
+              {{- end }}
+            </div>
+            {{- end }}
+          </div>
+        </article>
+
+        <article class="dash-card latest-card">
+          <div class="card-head">
+            <h2>最近更新</h2>
+            <a href="{{ "posts/" | relURL }}">全部文章 →</a>
+          </div>
+          <ol class="latest-list">
+            {{- range $i, $p := $latestPosts }}
+            <li>
+              <a href="{{ $p.RelPermalink }}">
+                <span class="num">{{ printf "%02d" (add $i 1) }}</span>
+                <span class="title">{{ $p.Title }}</span>
+                <time datetime="{{ $p.Date.Format "2006-01-02" }}">{{ $p.Date.Format "01.02" }}</time>
+              </a>
+            </li>
+            {{- end }}
+          </ol>
+        </article>
+      </section>
+
+      <section class="dash-bottom">
+        <article class="dash-card cats-card">
+          <div class="card-head">
+            <h2>分类与标签</h2>
+            <a href="{{ "categories/" | relURL }}">查看全部 →</a>
+          </div>
+          <div class="chip-row">
+            {{- range $categories }}
+            <a class="chip" href="{{ .Page.RelPermalink }}">{{ .Page.Title }} <span>{{ printf "%02d" .Count }}</span></a>
+            {{- end }}
+          </div>
+          <p class="chip-label">标签</p>
+          <div class="chip-row tag-row">
+            {{- range $tags }}
+            <a class="chip tag" href="{{ .Page.RelPermalink }}">{{ .Page.Title }}</a>
+            {{- end }}
+          </div>
+          <p class="card-foot">共 {{ $postCount }} 篇文章 · 最近更新 {{ $latestDate }}</p>
+        </article>
+
+        <article class="dash-card archive-card">
+          <div class="card-head">
+            <h2>归档</h2>
+            <a href="{{ "archives/" | relURL }}">时间线 →</a>
+          </div>
+          <ul class="archive-list">
+            {{- range $yearGroups }}
+            {{- $count := len .Pages -}}
+            {{- $pct := div (mul $count 100) $maxYearCount -}}
+            <li>
+              <span class="year">{{ .Key }}</span>
+              <span class="bar"><i style="width: {{ $pct }}%"></i></span>
+              <span class="count">{{ printf "%02d" $count }}</span>
+            </li>
+            {{- end }}
+          </ul>
+          <p class="card-foot">从 {{ $firstYear }} 年开始写 · 共 {{ $postCount }} 篇</p>
+        </article>
+
+        <article class="dash-card extra-card">
+          <div class="card-head">
+            <h2>Extra</h2>
+            <a href="{{ "extra/" | relURL }}">全部项目 →</a>
+          </div>
+          <ul class="extra-list">
+            {{- range $extraProjects }}
+              {{- $url := .url -}}
+              {{- if not $url -}}{{- $url = .githubLink -}}{{- end }}
+            <li>
+              <a href="{{ $url }}" target="_blank" rel="noopener noreferrer">
+                <span class="name">{{ .name }}</span>
+                <span class="tags">{{ delimit .tags " · " }}</span>
+                <span class="go">↗</span>
+              </a>
+            </li>
+            {{- end }}
+          </ul>
+          <p class="card-foot">共 {{ len $projects }} 个项目</p>
+        </article>
+      </section>
+    </div>
+
+    <footer class="home-footer">
+      <span>© {{ now.Year }} Archai · 用 Hugo 与一点耐心搭建</span>
+      <span class="home-beian">
+        {{- with .Site.Params.icp }}<a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">{{ . }}</a>{{ end }}
+        {{- with .Site.Params.police }}<a href="{{ $.Site.Params.policeUrl }}" target="_blank" rel="noopener noreferrer">{{ with $.Site.Params.policeIcon }}<img src="{{ . | relURL }}" alt="">{{ end }}{{ . }}</a>{{ end }}
+      </span>
+    </footer>
+  </div>
+</div>
+
+<script>
+  (function () {
+    function initPoster() {
+      var v = document.getElementById('liveBgBox');
+      if (!v) return;
+      v.setAttribute('poster', '{{ "images/poster1.webp" | relURL }}');
+      v.setAttribute('preload', 'metadata');
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPoster);
+    } else {
+      initPoster();
+    }
+  })();
+</script>

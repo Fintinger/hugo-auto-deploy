@@ -1,0 +1,274 @@
+/**
+ * 站点全局微调（项目级覆盖 themes/PaperMod/assets/scss/common/custom.scss）
+ * 2026-10 首页 V1：紫色品牌、简洁导航、搜索胶囊。
+ */
+
+@import "content";
+
+/* ============================================
+   Article list / tags
+   ============================================ */
+main.main > .post-entry {
+  transition: all 0.25s ease-in;
+}
+main.main > .post-entry:hover {
+  -moz-box-shadow: 0px 3px 13px #BFBFBF;
+  -webkit-box-shadow: 0px 3px 13px #BFBFBF;
+  box-shadow: 0px 3px 13px #BFBFBF;
+}
+.post-tags > li > a,
+.paginav {
+  background: #fff;
+}
+
+/* ============================================
+   Brand
+   ============================================ */
+header.header .nav .logo > a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  font-size: 17px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+header.header .nav .logo > a::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-left: 4px;
+  margin-bottom: 0;
+  border-radius: 50%;
+  background: #7C3AED;
+}
+
+/* 非首页桌面端与首页使用同一套 58px 安全边距 */
+@media (min-width: 900px) {
+  body:not(.animate):not(.mobile) header.header {
+    padding: 0 58px;
+  }
+}
+
+/* ============================================
+   Desktop navigation
+   ============================================ */
+body:not(.mobile) header.header .nav {
+  max-width: none;
+  width: 100%;
+}
+body:not(.mobile) header.header .nav .logo {
+  margin: 0;
+}
+body:not(.mobile) header.header .nav #menu {
+  display: flex;
+  align-items: center;
+  margin: 0 0 0 auto;
+}
+body:not(.mobile) header.header .nav #menu li {
+  margin: 0;
+}
+body:not(.mobile) header.header .nav #menu li + li {
+  margin-inline-start: 34px;
+}
+body:not(.mobile) header.header .nav #menu li a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 13px;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  color: var(--secondary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+body:not(.mobile) header.header .nav #menu li a:hover {
+  color: var(--primary);
+}
+body:not(.mobile) header.header .nav #menu span {
+  position: relative;
+}
+body:not(.mobile) header.header .nav #menu span.active {
+  color: var(--primary);
+}
+body:not(.mobile) header.header .nav #menu span.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 1px;
+  background: #7C3AED;
+}
+
+/* Search pill */
+@media (min-width: 700px) {
+  body:not(.mobile) header.header .nav #menu li:last-child {
+    margin-inline-start: 38px;
+  }
+  body:not(.mobile) header.header .nav #menu li:last-child a[href$="/search/"] {
+    height: 34px;
+    padding: 0 12px;
+    gap: 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--entry);
+    font-size: 12px;
+    color: var(--secondary);
+    white-space: nowrap;
+    box-sizing: border-box;
+    flex-shrink: 0;
+  }
+  body:not(.mobile) header.header .nav #menu li:last-child a[href$="/search/"]:hover {
+    color: var(--primary);
+    border-color: #A78BFA;
+  }
+  body:not(.mobile) header.header .nav #menu li:last-child a[href$="/search/"]::before {
+    content: "";
+    width: 13px;
+    height: 13px;
+    display: inline-block;
+    flex: 0 0 13px;
+    background: currentColor;
+    -webkit-mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") center / 13px 13px no-repeat;
+    mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") center / 13px 13px no-repeat;
+  }
+}
+/* ============================================
+   Site search overlay
+   ============================================ */
+.site-search[hidden] {
+  display: none;
+}
+.site-search {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+.site-search-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 8, 12, 0.68);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.site-search-panel {
+  position: relative;
+  width: calc(100% - 32px);
+  max-width: 680px;
+  max-height: 640px;
+  margin: 8vh auto 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(24, 34, 41, 0.94), rgba(10, 19, 24, 0.96));
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+  color: #F4F1EC;
+}
+.site-search-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.site-search-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: #A78BFA;
+}
+.site-search-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.site-search-head input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #F4F1EC;
+  font-family: inherit;
+  font-size: 15px;
+}
+.site-search-head input::placeholder {
+  color: rgba(255, 255, 255, 0.38);
+}
+.site-search-close {
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  cursor: pointer;
+}
+.site-search-close:hover {
+  border-color: rgba(167, 139, 250, 0.5);
+  color: #C4B5FD;
+}
+.site-search-hint {
+  margin: 0;
+  padding: 14px 18px;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.38);
+}
+.site-search-results {
+  max-height: 60vh;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+}
+.site-search-result {
+  display: block;
+  padding: 11px 12px;
+  border-radius: 9px;
+  text-decoration: none;
+}
+.site-search-result:hover,
+.site-search-result:focus {
+  background: rgba(167, 139, 250, 0.1);
+}
+.site-search-result-title {
+  display: block;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  color: #F4F1EC;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.site-search-result-summary {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.42);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+body.search-open {
+  overflow: hidden;
+}
+@media (max-width: 699px) {
+  .site-search-panel {
+    width: calc(100% - 24px);
+    margin-top: 5vh;
+  }
+  .site-search-head {
+    padding: 12px;
+  }
+  .site-search-head input {
+    font-size: 14px;
+  }
+}

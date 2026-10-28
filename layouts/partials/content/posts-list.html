@@ -1,0 +1,111 @@
+{{- $isTerm := eq .Kind "term" -}}
+{{- $pages := .Pages -}}
+{{- if not $isTerm -}}
+  {{- $pages = where site.RegularPages "Type" "posts" -}}
+{{- end -}}
+{{- $pages = where $pages "Type" "posts" -}}
+{{- $pages = $pages.ByDate.Reverse -}}
+
+{{- /* 置顶：沿用主题的 weight 约定，weight 越小越靠前 */ -}}
+{{- $pinned := where $pages "Weight" "gt" 0 -}}
+{{- $pinned = sort $pinned "Weight" "asc" -}}
+{{- $unpinned := where $pages "Weight" "le" 0 -}}
+{{- $unpinned = $unpinned.ByDate.Reverse -}}
+{{- $paginator := .Paginate $unpinned 10 -}}
+
+{{- /* 最新文章 New：恢复主题的「同月且 1 天内」日期判断 */ -}}
+{{- $newest := index $pages 0 -}}
+{{- $isNew := false -}}
+{{- with $newest -}}
+  {{- $isNew = and (eq .Date.Year now.Year) (eq .Date.Month now.Month) (le (sub now.Day .Date.Day) 1) -}}
+{{- end -}}
+
+{{- $pageTitle := cond $isTerm .Title "文章" -}}
+{{- $typeLabel := cond (eq .Type "tags") "标签" (cond (eq .Type "categories") "分类" "文章") -}}
+
+<div class="posts-index">
+<header class="page-header content-page-header">
+  {{ partial "breadcrumbs.html" . }}
+  <div class="content-page-head">
+    <div>
+      <p class="content-kicker">{{ if $isTerm }}{{ $typeLabel }}{{ else }}INDEX{{ end }}</p>
+      <h1>{{ $pageTitle }}</h1>
+    </div>
+    <span class="content-count">{{ len $pages }} 篇</span>
+  </div>
+  {{- if $isTerm }}
+  <p class="content-subtitle">这个{{ $typeLabel }}下的全部文章，按时间倒序。</p>
+  {{- end }}
+</header>
+
+<div class="content-layout">
+  <aside class="content-filter" aria-label="筛选">
+    <div class="filter-group">
+      <p class="filter-label">分类</p>
+      <a class="filter-link{{ if not $isTerm }} is-active{{ end }}" href="{{ "posts/" | relURL }}">全部</a>
+      {{- range first 8 site.Taxonomies.categories.ByCount }}
+      <a class="filter-link{{ if and $isTerm (eq $.Title .Page.LinkTitle) }} is-active{{ end }}" href="{{ .Page.RelPermalink }}">
+        {{ .Page.LinkTitle }} <span>{{ printf "%02d" .Count }}</span>
+      </a>
+      {{- end }}
+    </div>
+
+    <div class="filter-group">
+      <p class="filter-label">标签</p>
+      {{- range first 8 site.Taxonomies.tags.ByCount }}
+      <a class="filter-link{{ if and $isTerm (eq $.Title .Page.LinkTitle) }} is-active{{ end }}" href="{{ .Page.RelPermalink }}">
+        {{ .Page.LinkTitle }}
+      </a>
+      {{- end }}
+    </div>
+
+    <div class="filter-group">
+      <p class="filter-label">年份</p>
+      {{- range $pages.GroupByDate "2006" }}
+      <a class="filter-link" href="{{ "archives/" | relURL }}">{{ .Key }} <span>{{ printf "%02d" (len .Pages) }}</span></a>
+      {{- end }}
+    </div>
+  </aside>
+
+  <div class="content-list">
+    {{- if and (gt (len $pinned) 0) (eq $paginator.PageNumber 1) }}
+    <div class="pinned-group">
+      <div class="content-year pinned-label">置顶</div>
+      {{- range $pinned }}
+      <a class="content-row is-pinned" href="{{ .RelPermalink }}">
+        <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "01.02" }}</time>
+        <span class="content-row-title">
+          <span class="row-badge pinned">置顶</span>{{ .Title }}
+        </span>
+        {{- with .Params.categories }}<span class="content-row-cat">{{ index . 0 }}</span>{{ end }}
+        <span class="content-row-time">{{ .ReadingTime }} min</span>
+      </a>
+      {{- end }}
+    </div>
+    {{- end }}
+
+    {{- range $paginator.Pages.GroupByDate "2006" }}
+    <div class="content-year">{{ .Key }}</div>
+    {{- range .Pages }}
+    <a class="content-row" href="{{ .RelPermalink }}">
+      <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "01.02" }}</time>
+      <span class="content-row-title">
+        {{- if and $isNew (eq .RelPermalink $newest.RelPermalink) }}<span class="row-badge new">NEW</span>{{ end -}}
+        {{ .Title }}
+      </span>
+      {{- with .Params.categories }}<span class="content-row-cat">{{ index . 0 }}</span>{{ end }}
+      <span class="content-row-time">{{ .ReadingTime }} min</span>
+    </a>
+    {{- end }}
+    {{- end }}
+
+    {{- if gt $paginator.TotalPages 1 }}
+    <nav class="content-pagination" aria-label="分页">
+      {{- with $paginator.Prev }}<a href="{{ .URL }}">← 上一页</a>{{ else }}<span></span>{{ end }}
+      <span class="pagination-status">{{ $paginator.PageNumber }} / {{ $paginator.TotalPages }}</span>
+      {{- with $paginator.Next }}<a href="{{ .URL }}">下一页 →</a>{{ else }}<span></span>{{ end }}
+    </nav>
+    {{- end }}
+  </div>
+</div>
+</div>

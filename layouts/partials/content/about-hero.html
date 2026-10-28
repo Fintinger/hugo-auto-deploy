@@ -1,0 +1,33 @@
+{{- $profile := .Site.Params.profileMode -}}
+{{- $posts := where .Site.RegularPages "Type" "posts" -}}
+{{- $postCount := len $posts -}}
+{{- $categoryCount := len .Site.Taxonomies.categories -}}
+{{- $firstYear := "" -}}
+{{- with $posts }}{{ $firstYear = (index ($posts.ByDate) 0).Date.Format "2006" }}{{ end -}}
+{{- $socialOrder := slice "github" "juejin" "zhihu" "bilibili" "qq" "vx" -}}
+{{- $socialLabels := dict "github" "GitHub" "juejin" "掘金" "zhihu" "知乎" "bilibili" "Bilibili" "qq" "QQ" "vx" "微信" -}}
+
+<section class="about-hero">
+  <img class="about-avatar" src="{{ "images/head.gif" | relURL }}" alt="Archai" width="96" height="96">
+  <div class="about-id">
+    <p class="about-kicker">ABOUT</p>
+    <h1>{{ $profile.title | default "ARCHAI" }}<span class="dot">.</span></h1>
+    <p class="about-handle">@archai · XIAN, CN</p>
+  </div>
+  {{- with $profile.bio }}<p class="about-bio">{{ . }}</p>{{- end }}
+  <div class="about-stats">
+    <span><b>{{ $postCount }}</b> 篇文章</span>
+    <span><b>{{ $categoryCount }}</b> 个分类</span>
+    <span><b>{{ $firstYear }}</b> 开始写</span>
+  </div>
+  <div class="about-socials">
+    {{- range $socialOrder }}
+      {{- $name := . -}}
+      {{- with where $.Site.Params.socialIcons "name" $name -}}
+        {{- $icon := index . 0 -}}
+        <a href="{{ $icon.url }}" target="_blank" rel="noopener noreferrer me">{{ index $socialLabels $name }}</a>
+      {{- end -}}
+    {{- end }}
+    <a href="{{ "index.xml" | relURL }}">RSS</a>
+  </div>
+</section>

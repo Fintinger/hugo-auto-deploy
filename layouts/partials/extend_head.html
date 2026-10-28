@@ -1,0 +1,9 @@
+<link rel="preload" href="{{ "fonts/inter-latin-var.woff2" | relURL }}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{{ "fonts/jetbrains-mono-latin-400.woff2" | relURL }}" as="font" type="font/woff2" crossorigin>
+
+{{- $externalCSS := (resources.Match "css/external/*.min.css") | resources.Concat "assets/css/external/external.css"}}
+<link crossorigin="anonymous" href="{{ $externalCSS.RelPermalink }}" rel="preload stylesheet" as="style">
+
+{{- $sass := resources.Get "scss/style.scss" }}
+{{- $style := $sass | resources.ToCSS | minify | resources.Fingerprint "sha256" }}
+<link rel="stylesheet" href="{{ $style.RelPermalink }}" rel="preload stylesheet">

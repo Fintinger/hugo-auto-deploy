@@ -1,0 +1,185 @@
+{{- /* Footer custom content area start */ -}}
+{{- /* Insert any custom code web-analytics, resources, etc. here */ -}}
+{{- /* Footer custom content area end */ -}}
+
+<div class="site-search" id="site-search-overlay" hidden>
+  <div class="site-search-backdrop" data-search-close></div>
+  <div class="site-search-panel" role="dialog" aria-modal="true" aria-label="站内搜索">
+    <div class="site-search-head">
+      <span class="site-search-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      </span>
+      <input id="site-search-input" type="search" placeholder="搜索文章、项目或页面…" autocomplete="off" spellcheck="false">
+      <button type="button" class="site-search-close" data-search-close aria-label="关闭搜索">Esc</button>
+    </div>
+    <p class="site-search-hint" id="site-search-hint">输入关键词，搜索全站内容</p>
+    <ul class="site-search-results" id="site-search-results"></ul>
+  </div>
+</div>
+
+<!--自定义JS-->
+{{- $extendJS := (resources.Match "js/extended/*.js") | resources.Concat "assets/js/extended/extend.js" | fingerprint | minify }}
+<script src="{{ $extendJS.RelPermalink }}"></script>
+
+<!--最后执行的js-->
+{{ $finaJs := resources.Get "js/extended/finally.js" | minify }}
+<script src="{{ $finaJs.RelPermalink }}"></script>
+
+<script>
+  (function () {
+    var overlay = document.getElementById('site-search-overlay');
+    if (!overlay) return;
+
+    var input = document.getElementById('site-search-input');
+    var results = document.getElementById('site-search-results');
+    var hint = document.getElementById('site-search-hint');
+    var indexUrl = '{{ "index.json" | relURL }}';
+    var pages = null;
+    var loading = false;
+
+    function setHint(text) {
+      hint.textContent = text;
+      hint.hidden = false;
+    }
+
+    function clearResults() {
+      while (results.firstChild) results.removeChild(results.firstChild);
+    }
+
+    function openSearch() {
+      overlay.hidden = false;
+      document.body.classList.add('search-open');
+      setHint('输入关键词，搜索全站内容');
+      window.setTimeout(function () { input.focus(); }, 20);
+      loadIndex();
+    }
+
+    function closeSearch() {
+      overlay.hidden = true;
+      document.body.classList.remove('search-open');
+    }
+
+    function loadIndex() {
+      if (pages !== null || loading) return;
+      loading = true;
+      setHint('正在加载搜索索引…');
+      fetch(indexUrl)
+        .then(function (r) {
+          if (!r.ok) throw new Error('index ' + r.status);
+          return r.json();
+        })
+        .then(function (data) {
+          pages = Array.isArray(data) ? data : [];
+          loading = false;
+          render(input.value);
+        })
+        .catch(function () {
+          loading = false;
+          setHint('搜索索引加载失败，请稍后重试');
+        });
+    }
+
+    function render(query) {
+      clearResults();
+      var q = (query || '').trim().toLowerCase();
+      if (!q) {
+        setHint('输入关键词，搜索全站内容');
+        return;
+      }
+      if (!pages) {
+        setHint('正在加载搜索索引…');
+        return;
+      }
+
+      var matches = pages.filter(function (p) {
+        var hay = ((p.title || '') + ' ' + (p.summary || '') + ' ' + (p.content || '')).toLowerCase();
+        return hay.indexOf(q) !== -1;
+      }).slice(0, 8);
+
+      if (!matches.length) {
+        setHint('没有找到相关内容');
+        return;
+      }
+
+      hint.hidden = true;
+      matches.forEach(function (p) {
+        var li = document.createElement('li');
+        var a = document.createElement('a');
+        a.href = p.permalink || '#';
+        a.className = 'site-search-result';
+
+        var title = document.createElement('span');
+        title.className = 'site-search-result-title';
+        title.textContent = p.title || '（无标题）';
+
+        var summary = document.createElement('span');
+        summary.className = 'site-search-result-summary';
+        summary.textContent = (p.summary || p.content || '')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 100);
+
+        a.appendChild(title);
+        if (summary.textContent) a.appendChild(summary);
+        li.appendChild(a);
+        results.appendChild(li);
+      });
+    }
+
+    document.addEventListener('click', function (e) {
+      var trigger = e.target.closest && e.target.closest('a[href$="/search/"]');
+      if (trigger) {
+        e.preventDefault();
+        openSearch();
+      }
+      if (e.target.closest && e.target.closest('[data-search-close]')) {
+        closeSearch();
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      var isShortcut = (e.altKey && e.key === '/') || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k');
+      if (isShortcut) {
+        e.preventDefault();
+        if (overlay.hidden) openSearch(); else closeSearch();
+      }
+      if (e.key === 'Escape' && !overlay.hidden) closeSearch();
+    });
+
+    input.addEventListener('input', function () { render(input.value); });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeSearch();
+    });
+
+    if (window.location.hash === '#search') {
+      openSearch();
+    }
+  })();
+</script>
+<script>
+document.addEventListener('click', function (event) {
+  var btn = event.target.closest('[data-code-copy]');
+  if (!btn) return;
+  var block = btn.closest('.code-block');
+  var code = block && block.querySelector('code');
+  if (!code) return;
+  var text = code.innerText;
+  var done = function () {
+    var old = btn.textContent;
+    btn.textContent = '已复制';
+    setTimeout(function () { btn.textContent = old; }, 1600);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done);
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    done();
+  }
+});
+</script>

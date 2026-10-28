@@ -2039,3 +2039,661 @@ GitHub 仓库已用 slug leaf bundle 存储新文章（`content/posts/YYYY/MM/DD
 - `^~ /admin/` 使 `/admin/*.css|js` 不再命中 `expires 30d` 缓存，属有意为之（后台更新即时生效）。
 - `content/page/about.md` 的 Timeline 仍有一条「使用 vercel 实现自动化部署」；按 AGENTS.md 内容修改走 Admin / GitHub 网页，本次未动，待用户决定。
 - 本次未自动 commit / push；推送后 Actions 会把 Admin 文案与注释改动带上线。
+
+---
+
+## 2026-10-27
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+首页 V1 改版（用户选定 A 方案：一屏海报 + 底部「最近更新 / Extra 项目架 / 精选项目」），并把 Extra 页颜色对齐到首页深色 + 紫，**不重排 Extra 结构**。
+
+1. **首页模板**：新增项目级 `layouts/partials/index_profile.html`，替换主题 profile mode 名片。`readFile "static/data/lists.json"` + `transform.Unmarshal` 读取 6 个项目；pinned 的 ACMUSIC 做精选，其余取 4 个做索引；最近更新取 posts 前 3 篇。保留 `profile` 包裹元素，主题 `style.js`/背景视频加载逻辑不受影响。
+2. **样式**：新增项目级 `assets/scss/common/homepage.scss`（首页 V1 全部样式：海报/视频兜底、压暗渐变、紫 token、hero、项目架、响应式、首页滚动放行、`prefers-reduced-motion`）与 `assets/scss/common/custom.scss`（品牌点、桌面导航、搜索胶囊 `Alt /`、非首页 58px 边距、文章列表微调）。主题的 `homepage.scss`/`custom.scss` 被项目级同名文件覆盖，未改主题目录。
+3. **配置**：`label.text` 改为 `archai`；`profileMode.subtitle/bio/buttons` 改为首页文案；移除未使用的 `imageUrl`（同时去掉 `head.gif` 预加载）；菜单新增 Home/Extra，Search 移到末尾。
+4. **Extra 页**：`content/extra/index.html` 只改颜色：`:root` 变量 + header/overlay/tag/footer 等少量选择器；深色 `#071014`、紫 `#7C3AED` / `#A78BFA` / `#C4B5FD`。Tailwind、Vue、卡片结构、网格、字号、间距全部未动。
+5. **性能**：首页精选图改用 `static/images/extra/thumbs/acmusic.webp`（67KB，原 1.4MB PNG），`lists.json` 增加 `thumb` 字段；视频保留 Blob 加载，partial 内脚本补 `poster`/`preload`；`prefers-reduced-motion` 时隐藏视频。
+6. **移动端**：首页单列 + 全宽深色项目架；<899px 列表隐藏日期/标签/箭头与「全部」链接，标题截断；抽屉与菜单按钮深色。Extra 页响应式未动。
+7. **设计存档**：`docs/design-preview/` 增加三套方向、A/B 方案、Extra 深色稿与本次实现截图。
+
+### 修改文件
+
+- `config.yml`
+- `layouts/partials/index_profile.html`（新增）
+- `assets/scss/common/homepage.scss`（新增，覆盖主题同名）
+- `assets/scss/common/custom.scss`（新增，覆盖主题同名）
+- `content/extra/index.html`
+- `static/data/lists.json`
+- `static/images/extra/thumbs/acmusic.webp`（新增）
+- `docs/design-preview/**`（设计稿、实现截图、README）
+- `docs/PROJECT_CONTEXT.md`（首页覆盖层说明）
+- `docs/ARCHITECTURE_DECISIONS.md`（新增 ADR 14）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+用户选定 V1 第一版，并要求把 Extra 页纳入首页；随后明确保留紫色、Extra 只改颜色、与首页配置靠近。旧首页是「名片 + 8 图标 + 双胶囊按钮」，缺内容密度、中轴对称、深色首页与亮色文章页割裂；本次按 A 方案重排，Extra 页保留结构仅做深色紫对齐。
+
+### 测试结果
+
+- `.\hugo.exe`：BUILD_OK（257 pages / 16 paginator）
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：BUILD_OK（等同 GitHub Actions 的生产构建；本机默认 Windows Temp 缓存的 `--gc` prune 有 ACL 拒绝，属环境问题，Ubuntu runner 不受影响）
+- `node tools/admin-static-check.js`：**0 失败**（含 Hugo BUILD_OK、Admin JS `node --check`、CSP/nginx 头校验）
+- 无头 Edge 截图：1820×880、1440×900、1024×1000、390×1150；首页、/posts/、/extra/ 均正常渲染。
+- 静态页面检查：首页 3 篇真实文章、6 个真实项目、缩略图路径、`Alt /` 搜索胶囊、ICP 页脚均出现在构建产物中。
+- 移动端：无头 Edge 的 mobile UA 不等同真机视口（meta viewport 行为差异），390 截图右侧标题有截断；需真机复核首页、菜单抽屉、Extra。
+
+### 注意事项
+
+- **未改 `themes/PaperMod/`**：首页通过项目级模板/SCSS 覆盖。升级主题时需同步 `assets/scss/common/{custom,homepage}.scss` 与主题的 `style.scss` import 列表。
+- `html { overflow-y: auto !important; }` 覆盖主题 `style.js` 的锁滚动；短视口首页可滚动，视频/海报固定。
+- 首页社交链接从 8 个图标压成 GitHub/掘金/知乎/Bilibili + RSS；QQ/微信二维码未放进首页，可后续加回 About。
+- Extra 页在 1820 下仍为 4+2 列、`max-width: 1280` 未动（用户要求只改颜色）；要 3+3 或 1704 栅格需另做布局改动。
+- 精选图 `thumb` 字段为增量字段，Extra 页 Vue 不使用；删除该字段时首页自动 fallback 到 `img`。
+- 设计存档中 A/B 图的暖橙为先前的备选，V1 终版为紫；以 `impl-*.png` 为准。
+- 本次未自动 commit / push。
+
+---
+
+## 2026-10-27
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+按用户 2026-10-27 17:40 的反馈，修复首页 / Extra 的 4 个问题；第 5 点「全站页面与文章详情统一」属于大方向，本次未实施，等确认阅读页浅/深与字体方案后单独做。
+
+1. **首页文案**：删除 `profileMode.subtitle`（「前端工程师 / 工具控 / 偶尔拍照」）；`bio` 改为「这里放技术笔记、做过的工具，和不太重要但想留住的生活片段。」；bio 单行，`margin-top` 由 15px 调到 28px。
+2. **GIF 回归**：`layouts/partials/index_profile.html` 在 hero 顶部加回 `images/head.gif`（72×72 圆形、紫色外环）；未恢复原来的大 profile 卡片。
+3. **首页导航**：桌面首页隐藏 `#menu` 中除最后一个（Search）外的所有项，仅保留品牌 + Search 胶囊；内容页（Posts / Timeline / About 等）导航保留。移动端按用户要求完全未动。
+4. **Extra 预览图降亮**：`.project-image img` 默认 `brightness(.72) saturate(.9)`；`.project-image::after` 12% 深色层 + 1.2px `backdrop-filter` 毛玻璃；hover 恢复 `brightness(.98)` 并淡出毛玻璃；`.project-image .overlay` 的 z-index 提到 2，Live Demo / GitHub 按钮不被遮住。Extra 的 Tailwind / Vue / 网格 / 字号仍未动。
+5. 同步更新 `docs/design-preview` 的 `impl-*` 截图与修复记录。
+
+### 修改文件
+
+- `config.yml`
+- `layouts/partials/index_profile.html`
+- `assets/scss/common/homepage.scss`
+- `content/extra/index.html`
+- `docs/design-preview/README.md`
+- `docs/design-preview/impl-home-1820.png`
+- `docs/design-preview/impl-home-390.png`
+- `docs/design-preview/impl-extra-1820.png`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+用户反馈：首页角色文案 AI 味重、GIF 被删；顶部导航与页面内容重复；Extra 项目截图过亮刺眼；移动端抽屉浅色突兀但明确要求本次不要动移动端。第 5 点（各页面统一、文章详情、自定义字体、Markdown 渲染）范围大，留待确认后单独做。
+
+### 测试结果
+
+- Hugo dev server 自动重建通过；本地预览 `http://127.0.0.1:1313/` 首页 / Extra 截图正常。
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**（257 pages）
+- `node tools/admin-static-check.js`：**0 失败**
+- 无头 Edge：首页 1820×880、Extra 1820×1250、移动 390×1150 已截图。
+- 移动端 390 截图仍是无头 Edge 的 mobile 视口裁切（非真机）；首页 bio 在截图中一行、标题右侧裁切。真机需复核。
+
+### 注意事项
+
+- **移动端未动**：抽屉仍是现状（截图里的白底浅字 / 对比度问题保留），本次没有改任何移动布局或抽屉代码；首页文案和 GIF 是共享内容，会同步到手机。
+- 首页导航隐藏仅桌面首页；内容页导航保留。若希望全站都收成「品牌 + 搜索」，在第 5 点一起处理。
+- GIF 486KB，首页首屏加载；未恢复原来的 profile 卡片。
+- Extra 图片 hover 才恢复亮度；移动端无 hover，保持降亮。
+- 第 5 点尚未实施：需要先确认「阅读页浅色纸感 vs 全站深色」「自托管中文字体方案」「内容页导航形态」，再做字体 / Markdown / 列表 / 详情页。
+- 本次未自动 commit / push。
+
+---
+
+## 2026-10-27
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+按用户第二轮反馈，重排桌面 hero，并把移动端恢复成最初的纯色 profile 名片。
+
+1. **桌面 hero 重排**：头像从标题上方独立一行，改为「头像 + eyebrow」身份行；CTA 与社交链接并到同一行（左 CTA / 右社交）；604 窄桌面自然换行。删掉未使用的 role 样式，bio 保留一行。
+2. **移动端恢复最初版本**：
+   - 恢复 `profileMode` 名片：`head.gif` 150、ARCHAI、Posts / Extra 两个按钮；社交图标放回浅色抽屉。
+   - 页面背景恢复 `var(--background)` 纯色，不再加载海报 / 视频 / 深色渐变；新 hero、项目架、精选卡在移动端全部隐藏。
+   - 取消之前的移动端深色抽屉覆盖，抽屉回到主题原始浅色；汉堡 / 关闭按钮改用浅色 `☰` / `×`。
+   - 页脚沿用主题原样，仅补窄屏换行，避免裁切。
+3. 桌面首页导航仍只保留 Search；内容页导航保留。
+4. 更新 `impl-home-1820.png`、新增 `impl-home-604.png`、更新 `impl-home-390.png` 与设计 README。
+
+### 修改文件
+
+- `layouts/partials/index_profile.html`
+- `assets/scss/common/homepage.scss`
+- `docs/design-preview/README.md`
+- `docs/design-preview/impl-home-1820.png`
+- `docs/design-preview/impl-home-604.png`（新增）
+- `docs/design-preview/impl-home-390.png`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 修改原因
+
+用户反馈：桌面 hero（604 截图）竖向元素太多、排版乱；移动端的意思不是保留新深色首页，而是直接恢复最初版本——没有背景图、只有纯色背景；同时浅色抽屉在深色首页上显得突兀。
+
+### 测试结果
+
+- Hugo dev server 自动重建通过；本地预览 `http://127.0.0.1:1313/` 已更新。
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**
+- `node tools/admin-static-check.js`：**0 失败**
+- 无头 Edge 截图：1820×880、604×900、390×1150；桌面 hero 已由竖向堆叠改为身份行 + 动作行。
+- 移动端 390 截图仍是无头 Edge 的 layout viewport（比 390 宽）导致头像偏右、页脚裁切；真机 390 应居中，页脚有换行规则。
+
+### 注意事项
+
+- **移动端**：新深色 hero / 项目架不再显示；名片是主题原始 profileMode 样式，社交图标在抽屉里，不在名片上。
+- **桌面导航**：仅首页隐藏菜单，内容页仍保留完整导航；第 5 点若决定全站收成「品牌 + 搜索」再统一处理。
+- **无头移动截图**不是真机视口，不能按截图判断居中/页脚；请在真实手机或 DevTools 设备模式复核。
+- 第 5 点「全站页面/文章详情/字体/Markdown 统一」仍未实施，等用户确认阅读页浅/深与字体方案。
+- 本轮未自动 commit / push。
+---
+
+## 2026-10-28（玻璃卡片 / Bento 版）
+
+- 模型：deepseek-flash
+- 依据：用户提供的 1820×880 首页参考图
+
+### 修改内容
+
+按参考图重做首页为玻璃卡片 / Bento 布局，并按用户要求做两处调整：
+
+1. **导航**：移除右上 Categories；导航改为 Home / Posts / Timeline / About / 搜索。
+2. **Extra**：右下「找到我」整块替换为 Extra：4 个项目 + 全部项目 + 共 6 个项目；社交与 RSS 移到 hero 卡。
+3. **布局**：顶部 hero + 最近更新；底部 分类与标签 / 归档 / Extra；卡片为玻璃圆角、模糊雨屋背景、暖橙强调色。
+4. **数据**：真实站点数据——76 篇文章、8 个分类、2019 开始写；分类/标签各取 Top 5；归档 2019–2026；最新 4 篇；Extra 4 个；不再使用参考图里的占位数字。
+5. **文案**：bio 采用参考图的两句版本（包含原来的「这里放技术笔记……」）；名字下加 `@archai · LANZHOU, CN`。
+6. **移动端**：保持原始纯色 profile 名片（无背景图、浅色抽屉、GIF 150、Posts/Extra）；桌面 Bento 在 `body.mobile` 下隐藏。
+7. **内容页**：导航同步为 5 项；搜索胶囊保留；正文/字体/文章详情仍待第 5 点统一。
+
+### 修改文件
+
+- `layouts/partials/index_profile.html`
+- `assets/scss/common/homepage.scss`
+- `config.yml`（导航、搜索名称、bio）
+- `docs/design-preview/README.md`
+- `docs/design-preview/impl-home-1820.png` / `impl-home-1366.png`（新增）/ `impl-home-604.png` / `impl-home-390.png` / `impl-posts-1440.png`
+- `docs/design-preview/impl-home-1820-v1.png`（旧 V1 存档）
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- Hugo dev server 自动重建通过；本地预览 `http://127.0.0.1:1313/` 已更新。
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**
+- `node tools/admin-static-check.js`：**0 失败**
+- 无头 Edge：1820×880、1366×768、604×900、390×1150；文章列表 1440×1000。
+- 390 移动端仍是无头 layout viewport 偏宽导致头像偏右/页脚裁切；真机以实际为准。
+
+### 注意事项
+
+- 右上 Categories 已删除；左下的「分类与标签」卡保留（如果那里也要删，单独说）。
+- 右下社交卡已换成 Extra；社交与 RSS 现在在 hero 卡里。
+- 搜索快捷键仍为 `Alt /`，没有照搬参考图的 `⌘K`。
+- 强调色按参考图使用暖橙；内容页仍是旧的紫色/浅色，待第 5 点统一。
+- 本轮未自动 commit / push。
+---
+
+## 2026-10-28（首页第二轮：紫色 / 一屏 / 遮罩搜索）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+按用户 8 点反馈：
+
+1. 首页顶栏 Home / Posts / Timeline / About 全部移除，只保留品牌 + 搜索。
+2. 强调色从暖橙换回紫色（#A78BFA / #7C3AED）。
+3. 地址改为 `@archai · XIAN, CN`。
+4. bio 恢复原句：「这里放技术笔记、做过的工具，和不太重要但想留住的生活片段。」
+5. 首页锁定一屏：`body` / `main` 100vh，不纵向滚动；1366×768 用紧凑卡片（300/210）；≤860 窄桌面回落原始 profile 名片，同样一屏。
+6. 搜索框去掉 `Alt /` 角标；点击不再跳 `/search/`，改为当前页顶部遮罩层搜索，读取 `/index.json` 即时过滤；Esc / 点击遮罩关闭；Alt+/、Ctrl/⌘+K 打开；`/#search` 可直接打开。
+7. 卡片透明度降到 .50/.38，背景模糊/亮度改为 10px / .62，背景图更明显。
+8. 其他页面适配方案写入 `docs/design-preview/README.md`。
+
+### 修改文件
+
+- `layouts/partials/index_profile.html`（XIAN、首页结构）
+- `layouts/partials/extend_footer.html`（搜索遮罩层 + 保留主题 extend/finally 脚本）
+- `assets/scss/common/homepage.scss`（紫色、一屏、紧凑、604 回落、透明度）
+- `assets/scss/common/custom.scss`（搜索胶囊去 Alt 角标、遮罩层样式）
+- `config.yml`（bio、导航）
+- `docs/design-preview/README.md`、`impl-home-1820/1366/604/390.png`、`impl-search-overlay.png`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- Hugo dev server 自动重建通过；本地预览 `http://127.0.0.1:1313/` 已更新。
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**
+- `node tools/admin-static-check.js`：**0 失败**
+- 无头 Edge：1820×880、1366×768、604×900、390×1150 均为一屏（1366 紧凑卡片；604 回落 profile 名片）；搜索遮罩层截图见 `impl-search-overlay.png`。
+- `/index.json` 可访问（368KB），遮罩层可过滤标题/摘要/正文。
+
+### 注意事项
+
+- 首页顶栏只留搜索；内容页仍保留 5 项导航（文章列表/详情页需要入口），第 8 点的 rail 方案在 README 里。
+- ≤860 桌面回落到原始 profile 名片，保证一屏；这是折中，不是 bento 的窄屏版本。
+- 移动端仍是无头 viewport 偏宽导致的截图裁切；真机以实际为准。
+- 搜索遮罩层的 `/search/` 页面仍保留为无 JS 回退。
+- 本轮未自动 commit / push。
+---
+
+## 2026-10-28（P1：内容页 chrome + 列表 / 归档 / 分类）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+按上一轮「其他页面适配」方案先做 P1：
+
+1. **内容页 chrome**：≥1100 桌面 header 只留品牌 + 搜索，左侧固定 rail（文章 / 归档 / 分类 / 关于）；900–1099 恢复 5 项顶部导航、隐藏 rail；<900（604/移动）暂保留主题浅色样式，P3 再统一。
+2. **文章列表**：新增 `/posts/` 玻璃索引；左侧 sticky 分类/标签/年份筛选，右侧日期 + 标题 + 分类 + 阅读时长行；按年分组；10 篇/页。
+3. **归档**：新增 `/archives/` 纵向时间线（年份、数量、紫色节点、文章行）。
+4. **分类/标签**：新增 `/categories/`、`/tags/` 玻璃卡片网格；term 页复用文章列表并高亮当前筛选。
+5. **文章 / About**：接上同一套 chrome、背景和近不透明阅读面板；正文排版、TOC、代码、Markdown 细节留 P2。
+6. 首页保持上一轮的紫色一屏、遮罩搜索、XIAN、原 bio。
+
+### 修改文件
+
+- `layouts/_default/list.html`（home + posts/term + generic）
+- `layouts/_default/archives.html`
+- `layouts/_default/terms.html`
+- `layouts/partials/content/posts-list.html`
+- `layouts/partials/content/rail.html`
+- `layouts/partials/header.html`（复制主题 header + rail include）
+- `assets/scss/common/content.scss`
+- `assets/scss/common/custom.scss`（import content）
+- `layouts/partials/extend_footer.html`（rail 移到 header，保留遮罩层）
+- `docs/design-preview/README.md`
+- `docs/design-preview/impl-posts-1820.png` / `impl-archives-1820.png` / `impl-categories-1820.png` / `impl-article-1820.png`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**
+- `node tools/admin-static-check.js`：**0 失败**
+- 1820×1100 截图：文章列表、归档、分类、文章详情均正常；rail 在列表/归档/分类/文章分别高亮文章/归档/分类/文章。
+- 文章详情隐藏 Markdown 首个重复 H1。
+- 首页回归无变化。
+
+### 注意事项
+
+- 内容页深色只在 ≥900px 桌面生效；604/移动端仍是主题浅色，P3 再统一。
+- 文章详情/About 只是基础阅读面板，P2 统一字体、Markdown、TOC、代码、图片、表格、评论。
+- 导航在 ≥1100 使用 rail；900–1099 用顶部 5 项；这是过渡方案，P3 再决定窄屏。
+- 主题文件未修改；header 为项目级复制覆盖。
+- 本轮未自动 commit / push。
+---
+
+## 2026-10-28（文章列表：置顶 / New / 删副标题）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- 删除 `/posts/` 列表副标题「全部文章，按时间倒序；左侧可按分类、标签或年份继续筛选。」（term 页自己的副标题保留）。
+- 恢复文章置顶：沿用主题的 `weight` 约定，`weight > 0` 的文章排进顶部「置顶」组并加「置顶」badge；其余按日期倒序。
+- 恢复最新文章 New：按日期最新的一篇（当前 2026-08-26）加 `NEW` badge；置顶文章仍单独置顶。
+- 置顶文章只在第 1 页顶部出现，不重复进入年份分组；分页只计算非置顶文章。
+
+### 修改文件
+
+- `layouts/partials/content/posts-list.html`
+- `assets/scss/common/content.scss`（置顶组 / badge / New 样式，含 <900 浅色回退）
+- `docs/design-preview/impl-posts-1820.png`
+- `docs/design-preview/README.md`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- Hugo dev server 重建通过；1820×1100 / 604×900 文章列表截图正常。
+- 置顶：2022/04/05（weight 1）、2022/04/02（weight 2）顶部「置顶」组；最新 2026/08/26 New。
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**
+- `node tools/admin-static-check.js`：**0 失败**
+
+### 注意事项
+
+- New 当前固定标在「按日期最新」的一篇上；不再使用主题原先「同月且 1 天内」的日期判断。若想恢复严格日期判断，改一行即可。
+- 本轮未自动 commit / push。
+---
+
+## 2026-10-28（首页搜索 / posts 品牌与字号 / New 日期）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- New 恢复主题原判断：同年同月且 `now.Day - article.Day <= 1`；当前最新 2026-08-26 不显示，近期有新文章会自动出现。
+- 首页搜索框放大：`min-width:118px; height:38px; padding:0 16px; gap:9px; font-size:13px`，图标/文字放在胶囊内；posts 页搜索不动。
+- posts 页 header 的 archai 下移 5px（`padding-top`），与搜索/导航垂直对齐。
+- posts 页文字整体放大 1.1x：页面标题 40→44、筛选标签/链接、年份、日期、标题、分类、时长、分页；<900 浅色回退同步放大。
+- `/posts/` 列表副标题删除；置顶组与 badge 保留。
+
+### 修改文件
+
+- `layouts/partials/content/posts-list.html`（New 日期判断、外层 `.posts-index`）
+- `assets/scss/common/content.scss`（posts 1.1x、header logo 下移）
+- `assets/scss/common/homepage.scss`（首页搜索尺寸）
+- `docs/design-preview/impl-home-1820.png`、`impl-posts-1820.png`
+- `docs/design-preview/README.md`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- Hugo dev server 重建通过；首页 1820×880、posts 1820×1100 / 604×900 截图正常。
+- 置顶 2022/04/05、04/02 仍在顶部；当前 New 不显示（符合恢复后的日期判断）。
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**
+- `node tools/admin-static-check.js`：**0 失败**
+
+### 注意事项
+
+- New 当前不显示是符合主题原逻辑，不是功能丢失。
+- 本轮未自动 commit / push。
+---
+
+## 2026-10-28（P2：文章详情 / About 阅读排版）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- 文章面板 max-width 900；post header / 正文 / TOC 统一 760 阅读宽度。
+- 正文 15.5px / 1.95；标题 36px；h2 紫色左边线；链接、strong、blockquote、hr 统一。
+- 表格横向滚动 + 边框；图片圆角/边框；代码块深色玻璃 + 横向滚动；图注；标签；paginav。
+- TOC 玻璃小卡，保留主题展开/锁定/关闭逻辑。
+- 新增 About hero：头像、ARCHAI、XIAN、bio、文章/分类/起始年、社交 + RSS。
+- 新增项目级 `layouts/_default/single.html`（主题 single + About hero 条件）和 `layouts/partials/content/about-hero.html`。
+- 字体仍沿用系统栈；未引入新 web font。
+
+### 修改文件
+
+- `layouts/_default/single.html`
+- `layouts/partials/content/about-hero.html`
+- `assets/scss/common/content.scss`
+- `docs/design-preview/README.md`
+- `docs/design-preview/impl-article-1820.png`
+- `docs/design-preview/impl-about-1820.png`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- Hugo dev server 重建通过；1820×1200 文章页 / About 页截图正常。
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**
+- `node tools/admin-static-check.js`：**0 失败**
+
+### 注意事项
+
+- 字体没有改动；换 Inter/Noto Serif SC/LXGW 需要自托管字体文件。
+- 文章 TOC 仍是主题原有的浮层按钮/面板，只做了玻璃化。
+- P3（Extra / 404 / 移动端内容页）未做。
+- 本轮未自动 commit / push。
+---
+
+## 2026-10-28（TOC 固定右侧 / 始终展开）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- TOC 从 `<article>` 内移到 `</article>` 之后的 `.article-toc`，避免 fixed 被文章容器/层级困住。
+- `position: fixed; right: 26px; top: 50%; transform: translateY(-50%)`，始终展开；隐藏折叠按钮、关闭按钮。
+- `max-height: calc(100vh - 112px)`，内容超出时面板内部滚动。
+- <1520px 隐藏 TOC，避免窄屏压住正文。
+- 移除文章容器的 `animate__fadeIn` 类：该动画的 transform 会创建 containing block，导致 fixed TOC 相对文章而非视口定位。
+
+### 修改文件
+
+- `layouts/_default/single.html`
+- `assets/scss/common/content.scss`
+- `docs/design-preview/impl-article-1820.png`
+- `docs/design-preview/README.md`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- 1820×1100 文章页：TOC 固定在右侧、垂直居中、始终展开、内部可滚动。
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**
+- `node tools/admin-static-check.js`：**0 失败**
+
+### 注意事项
+
+- TOC 在 1520px 以下隐藏；如果需要 1366 也显示，需要再压缩正文宽度/TOC 宽度。
+- 文章淡入动画被移除，以换取 fixed 正确定位。
+- 本轮未自动 commit / push。
+---
+
+## 2026-10-28（TOC 右侧空白居中 / 顶部对齐）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- TOC 水平位置：从贴右改为在文章面板右侧空白区水平居中，`right: calc(50vw - 742px)`。
+- TOC 垂直位置：从视口垂直居中改为顶边与文章面板上边框对齐，`top: 118px`，不再使用 `translateY(-50%)`。
+- 最大高度改为 `calc(100vh - 150px)`，面板/内层同步收紧，内容超出仍内部滚动。
+
+### 修改文件
+
+- `assets/scss/common/content.scss`
+- `docs/design-preview/impl-article-1820.png`
+- `docs/design-preview/README.md`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- 1820×1100 文章页：TOC 在右侧空白区水平居中，顶边与文章面板上边框对齐。
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**
+- `node tools/admin-static-check.js`：**0 失败**
+
+### 注意事项
+
+- 该水平居中公式基于 ≥1520px 时文章面板右边缘固定在 1260px；<1520px 隐藏 TOC。
+- 本轮未自动 commit / push。
+---
+
+## 2026-10-28（TOC 加宽 / 顶边再对齐）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- TOC 宽度 224 → 260，水平仍在右侧空白区居中（`right: calc(50vw - 760px)`）。
+- TOC 顶边 `top: 118px` → `129px`，视觉上顶边与文章面板上边框齐平（此前差约 10px）。
+- 最大高度同步 `calc(100vh - 161px)`，内部滚动。
+
+### 修改文件
+
+- `assets/scss/common/content.scss`
+- `docs/design-preview/impl-article-1820.png`
+- `docs/design-preview/README.md`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- 1820×1100 文章页：TOC 宽 260，右侧空白居中，顶边与文章面板上边框对齐。
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**
+- `node tools/admin-static-check.js`：**0 失败**
+
+### 注意事项
+
+- 顶边使用 `129px` 是为了抵消实际渲染中约 10px 的视觉偏差；如果换字体/字号可能需要再微调。
+- 本轮未自动 commit / push。
+---
+
+## 2026-10-28（TOC 贴右 / 400 宽 / 字号加大）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- TOC 从右侧空白居中改为贴右：`right: 0`，宽度 260 → 400，`border-radius: 12px 0 0 12px`。
+- 链接字号 11.5 → 13，行高 1.55 → 1.65；标题字号 9 → 10。
+- 顶边仍保持与文章面板上边框对齐（`top: 129px`）。
+- 最大高度 `calc(100vh - 161px)`，内部滚动。
+- 显示断点 1520 → 1680，避免宽 400 的 TOC 在窄屏压住正文。
+
+### 修改文件
+
+- `assets/scss/common/content.scss`
+- `docs/design-preview/impl-article-1820.png`
+- `docs/design-preview/README.md`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- 1820×1100 文章页：TOC 贴右、宽 400、字号加大、顶边对齐。
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**
+- `node tools/admin-static-check.js`：**0 失败**
+
+### 注意事项
+
+- <1680px 隐藏 TOC；1366 下不会显示。
+- 本轮未自动 commit / push。
+---
+
+## 2026-10-28（文章返回图标）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- 文章页顶部 `Home › Posts` 面包屑替换为返回图标（左箭头），链接到 `/posts/`。
+- 图标颜色 `var(--secondary)`，hover 变亮并显示边框/背景。
+- About 页和其它 single 页保留原面包屑。
+
+### 修改文件
+
+- `layouts/_default/single.html`
+- `assets/scss/common/content.scss`
+- `docs/design-preview/impl-article-1820.png`
+- `docs/design-preview/README.md`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- 1820×1100 文章页：返回图标正常显示，颜色为次要色。
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**
+- `node tools/admin-static-check.js`：**0 失败**
+
+### 注意事项
+
+- 返回图标仅用于文章页；About 等仍是普通面包屑。
+- 本轮未自动 commit / push。
+---
+
+## 2026-10-28（字体 + Markdown 渲染方案 A）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- 自托管 Inter variable（Latin）和 JetBrains Mono 400（Latin）；中文系统字体栈；不引入中文字库。
+- 新增 `static/fonts/` 两个 woff2 + `LICENSE-NOTES.txt`；`@font-face` 使用 `font-display: swap`。
+- head 预加载两个字体文件。
+- 正文 16px / 1.9，段落 1.25em，左对齐，字距 0.01em；元信息 tabular-nums。
+- H2 1.5em，H3 1.2em，H4 1.05em；引用 14.5 / 1.8；表格 13.5；代码块 13.5 / 1.7；行内代码 0.88em；图注 12。
+- 新增 Markdown render hooks：图片 figure/figcaption/lazy、外链 target+rel、表格滚动容器。
+- 新增项目级 `assets/scss/style.scss` 入口；`layouts/partials/extend_head.html` 恢复主题的 external CSS + SCSS 编译，并追加字体预加载。
+- 主题目录未修改。
+
+### 修改文件
+
+- `static/fonts/inter-latin-var.woff2`
+- `static/fonts/jetbrains-mono-latin-400.woff2`
+- `static/fonts/LICENSE-NOTES.txt`
+- `assets/scss/style.scss`（项目入口）
+- `assets/scss/common/content.scss`（字体、字号、render hook 样式）
+- `layouts/partials/extend_head.html`
+- `layouts/_default/_markup/render-image.html`
+- `layouts/_default/_markup/render-link.html`
+- `layouts/_default/_markup/render-table.html`
+- `docs/design-preview/impl-home-1820.png`
+- `docs/design-preview/impl-article-1820.png`
+- `docs/design-preview/README.md`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- 首页、文章页 1820 截图正常；Inter/JetBrains Mono 已生效。
+- `.\hugo.exe --gc --minify --cacheDir <workspace>`：**BUILD_OK**
+- `node tools/admin-static-check.js`：**0 失败**
+
+### 注意事项
+
+- 字体只覆盖 Latin；中文仍用系统字体。
+- 项目级 `style.scss` 是必要的：主题 `extend_head.html` 的 SCSS 编译入口不能被只含预加载的 partial 覆盖。
+- 本轮未自动 commit / push。
+---
+
+## 2026-10-28（排版 v3）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- 新增 v3 token：measure 720、type scale 16/20/24/30/36、spacing 4/8/12/16/24/32/48/64。
+- 正文 16 / 1.85，左对齐，CJK `text-spacing-trim` / `text-autospace` / `hanging-punctuation` / `text-wrap: pretty`。
+- H2 24、H3 20、H4 16.5；标题 `text-wrap: balance`。
+- H2/H3/H4、段落、引用、hr、表格改用 spacing token。
+- 新增代码块 render hook：语言标签 + 复制按钮 + 代码体；复制走事件委托。
+- 新增 blockquote render hook：支持 `> [!NOTE]` / TIP / WARNING / IMPORTANT / CAUTION 转 callout。
+- 新增 details、脚注样式。
+
+### 修改文件
+
+- `assets/scss/common/content.scss`
+- `layouts/_default/_markup/render-codeblock.html`
+- `layouts/_default/_markup/render-blockquote.html`
+- `layouts/partials/extend_footer.html`（复制脚本）
+- `docs/design-preview/impl-article-1820.png`
+- `docs/design-preview/README.md`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- `hugo --gc --minify`：**BUILD_OK**
+- `admin-static-check`：**0 失败**
+- 1820 文章页截图正常；代码块头部和正文排版已生效。
+
+### 注意事项
+
+- callout 语法是 GitHub Alerts 风格，旧文章里的普通引用不受影响。
+- 主题目录未修改；未 commit。
+---
+
+## 2026-10-28（评论区：样式 + 国内方案）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- Waline 评论区改为暗色玻璃 + 紫色强调：覆盖 `#waline` 的 Waline CSS 变量和输入/评论/按钮样式。
+- 新增项目级 `layouts/partials/comments.html`：8 秒加载超时兜底，失败显示提示，避免一直空白。
+- 新增 `docs/COMMENTS.md`：
+  - 根因：前端 Waline 已是自托管，只有后端 Vercel API 在国内被墙。
+  - 推荐：Waline 后端 Docker 搬到国内 VPS，绑 `waline.archai.space`，前端只改 `serverURL`。
+  - 备选：Twikoo + 腾讯云开发 CloudBase；Artalk 自托管。
+  - 不推荐：Giscus / Utterances / Disqus / Valine。
+- 未切换后端，因为需要 VPS、域名和旧评论数据迁移。
+
+### 修改文件
+
+- `assets/scss/common/content.scss`
+- `layouts/partials/comments.html`
+- `docs/COMMENTS.md`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- `hugo --gc --minify`：**BUILD_OK**
+- `admin-static-check`：**0 失败**
+- 主题目录未修改。
+
+### 注意事项
+
+- 样式和兜底已生效，但评论真正加载仍需把后端从 Vercel 迁到国内。
+- 本轮未自动 commit / push。

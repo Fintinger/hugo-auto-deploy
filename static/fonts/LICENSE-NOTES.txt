@@ -1,0 +1,10 @@
+Fonts bundled in this directory:
+
+- Inter (variable, Latin subset)
+  https://github.com/rsms/inter
+  SIL Open Font License 1.1
+- JetBrains Mono (Latin, 400)
+  https://github.com/JetBrains/JetBrainsMono
+  SIL Open Font License 1.1
+
+Both are self-hosted to avoid external CDN dependencies.

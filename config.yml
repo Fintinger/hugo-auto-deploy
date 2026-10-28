@@ -67,7 +67,7 @@ params:
     # safari_pinned_tab: "<link / abs url>"
 
   label:
-    text: "Home"
+    text: "archai"
     # icon: https://gitee.com/fintinger/figure-bed/raw/master//images/20210530080206.ico
     # iconHeight: 0
 
@@ -76,16 +76,12 @@ params:
   profileMode:
     enabled: true # needs to be explicitly set
     title: ARCHAI
-    subtitle: 
-    imageUrl: "./images/head.gif"
-    imageWidth: 150
-    imageHeight: 150
-    imageTitle: my image
+    bio: "这里放技术笔记、做过的工具，和不太重要但想留住的生活片段。"
     buttons:
-      - name: Posts
-        url: posts
-      - name: Extra
-        url: extra
+      - name: 读文章
+        url: posts/
+      - name: 关于我
+        url: about/
   
 #-------------------------------------------------------------
 
@@ -153,18 +149,14 @@ params:
   
 menu:
   main:
+    - identifier: Home
+      name: Home
+      url: /
+      weight: 1
     - identifier: Posts
       name: Posts
       url: /posts/
       weight: 2
-    - identifier: Categories
-      name: Categories
-      url: /categories/
-      weight: 10
-    - identifier: Search
-      name: Search
-      url: /search/
-      weight: 30
     - identifier: archives
       name: Timeline
       url: /archives/
@@ -173,6 +165,10 @@ menu:
       name: About
       url: /about/
       weight: 50
+    - identifier: Search
+      name: 搜索
+      url: /search/
+      weight: 60
     
 # Read: https://github.com/adityatelange/hugo-PaperMod/wiki/FAQs#using-hugos-syntax-highlighter-chroma
 # pygmentsUseClasses: true

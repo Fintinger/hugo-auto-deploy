@@ -188,3 +188,26 @@
   - nginx 的 `add_header` 一旦出现在 location 内就会覆盖 server 级继承 → snippet 必须完整重声明 HSTS / nosniff / Referrer-Policy。
   - `^~ /admin/` 会同时捕获 `/admin/*.css|js`，它们因此不再命中 `expires 30d` 缓存（有意为之：后台改动即时生效）。
   - 改后必须 `nginx -t` → `systemctl reload nginx` → `curl -I` 核对；`tools/admin-static-check.js` 会校验 snippet 完整性与 CSP 漂移。
+
+---
+
+## 14. 首页 V1 改版：项目级模板/SCSS 覆盖 + 本地 JSON 读取
+
+- **日期**：2026-10-27
+- **背景**：用户选定 V1（一屏海报 + 底部最近更新/项目架），并要求把 Extra 页纳入首页、保留紫色；AGENTS.md 禁止直接修改 `themes/PaperMod/`。
+- **问题**：在不改主题目录的前提下重做首页；同时避免 `lists.json` 与首页项目数据维护两份。
+- **最终方案**：
+  - 新增项目级 `layouts/partials/index_profile.html`，Hugo 优先于主题同名模板；首页仍由 `_default/list.html` 的 `profileMode` 分支触发。
+  - 新增项目级 `assets/scss/common/homepage.scss` 与 `custom.scss`，覆盖主题同名文件；主题 `style.scss` 继续负责 import 顺序，项目级资源优先。
+  - 首页项目数据用 `readFile "static/data/lists.json"` + `transform.Unmarshal` 读取，与 Extra 页共用一份 JSON；精选图额外使用 `thumb` 字段。
+  - 首页保留 `<div class="profile">` 包裹，保证主题 `style.js` 的 `animate`/`homepage` class 与 `getSetResource.js` 的背景视频回调继续生效。
+  - Extra 页 `content/extra/index.html` 仅改颜色变量与少量颜色选择器，不改变 Tailwind/Vue/卡片/网格/字号。
+  - 首页滚动锁用 `html { overflow-y: auto !important; }` 放行；背景海报/视频/压暗层改为 fixed，短视口与移动端可滚动。
+- **原因**：项目级覆盖可回滚（删文件即回退）、不动 vendored 主题；`readFile` 保持 Extra 的数据单一来源；首页 `profile` 包裹保留既有 JS 依赖。
+- **影响范围**：`layouts/partials/index_profile.html`、`assets/scss/common/homepage.scss`、`assets/scss/common/custom.scss`、`config.yml`、`content/extra/index.html`、`static/data/lists.json`、`static/images/extra/thumbs/`。
+- **未来注意事项**：
+  - 主题升级/修改 `style.scss` 的 import 列表时，项目级 `homepage.scss`/`custom.scss` 必须同步；`themes/PaperMod/` 内的同名旧文件不再生效。
+  - 首页模板依赖 `static/data/lists.json` 的 `name/url/img/tags/pinned/thumb` 字段；改字段需同步模板与 Extra 的 Vue。
+  - `profileMode.imageUrl` 已移除；若以后要恢复头像，需重新加 head 预加载并处理主题首页样式。
+  - 移动端列表在 <899px 隐藏日期/标签/箭头；若产品要求保留，需要重新设计窄屏行布局，不能直接复用桌面 grid。
+  - Extra 页仍是独立 HTML，宽度/断点为 1280 / 4 列，与首页 1704 栅格不同源；统一宽度是另一次布局改动。
