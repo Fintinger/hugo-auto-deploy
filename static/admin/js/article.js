@@ -522,7 +522,8 @@
      * Front Matter to preserve.
      *
      * formData = {
-     *   title, date, categories[], tags[], draft (bool), math (bool), body
+     *   title, date, categories[], tags[], pinned (bool), draft (bool),
+     *   math (bool), body
      * }
      */
     function generateFrontMatter(formData) {
@@ -530,6 +531,9 @@
         lines.push('---');
         lines.push('title: "' + yamlEscape(formData.title || '') + '"');
         lines.push('date: ' + (formData.date || ''));
+        if (formData.pinned) {
+            lines.push('weight: 1');
+        }
         if (Array.isArray(formData.categories) && formData.categories.length > 0) {
             lines.push('categories:');
             for (var i = 0; i < formData.categories.length; i++) {

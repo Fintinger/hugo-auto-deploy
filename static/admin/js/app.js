@@ -42,6 +42,7 @@
         infoBranch: document.getElementById('info-branch'),
         disconnectBtn: document.getElementById('disconnect-btn'),
         articleListCard: document.getElementById('article-list-card'),
+        workspaceEmpty: document.getElementById('workspace-empty'),
         refreshBtn: document.getElementById('refresh-articles-btn'),
         searchInput: document.getElementById('article-search'),
         treeStatus: document.getElementById('tree-status'),
@@ -63,12 +64,14 @@
         edDate: document.getElementById('ed-date'),
         edCategories: document.getElementById('ed-categories'),
         edTags: document.getElementById('ed-tags'),
+        edPinned: document.getElementById('ed-pinned'),
         edDraft: document.getElementById('ed-draft'),
         edMath: document.getElementById('ed-math'),
+        edStateText: document.getElementById('ed-state-text'),
+        edDocPath: document.getElementById('ed-doc-path'),
         edBody: document.getElementById('ed-body'),
         edSaveBtn: document.getElementById('ed-save-btn'),
         edCancel: document.getElementById('edit-cancel-btn'),
-        edCancel2: document.getElementById('ed-cancel-2'),
         edErrorBanner: document.getElementById('ed-error-banner'),
         edSuccessBanner: document.getElementById('ed-success-banner'),
         edConflictBanner: document.getElementById('ed-conflict-banner'),
@@ -113,16 +116,15 @@
         newArticleBtn: document.getElementById('new-article-btn'),
         newArticleForm: document.getElementById('new-article-form'),
         naCancel: document.getElementById('new-article-cancel'),
-        naCancel2: document.getElementById('na-cancel-2'),
         naTitle: document.getElementById('na-title'),
         naDate: document.getElementById('na-date'),
         naPathPreview: document.getElementById('na-path-preview'),
-        naFilename: document.getElementById('na-filename'),
-        naFilenameError: document.getElementById('na-filename-error'),
         naCategories: document.getElementById('na-categories'),
         naTags: document.getElementById('na-tags'),
+        naPinned: document.getElementById('na-pinned'),
         naDraft: document.getElementById('na-draft'),
         naMath: document.getElementById('na-math'),
+        naStateText: document.getElementById('na-state-text'),
         naBody: document.getElementById('na-body'),
         naSaveDraft: document.getElementById('na-save-draft'),
         naPublish: document.getElementById('na-publish'),
@@ -152,6 +154,8 @@
         formVisible: false,
         formDirty: false,
         formSubmitting: false,
+        newArticlePath: null,
+        newArticleSlug: null,
         edit: null,
         deletePreview: null,
         // Stage 9A — pending image uploads (in-memory only, not yet pushed to GitHub)
@@ -804,9 +808,27 @@
     }
 
     function selectArticle(article) {
+        // Switching articles must close whatever editor is open. If the
+        // user cancels the unsaved-changes prompt, keep the current view.
+        if (isNewFormOpen() && state.formSubmitting) {
+            U.toast('正在提交，请稍候…', 'warning');
+            return;
+        }
+        if (isEditFormOpen()) {
+            if (state.edit && state.edit.path === article.path) {
+                setWorkspaceView('edit');
+                return;
+            }
+            hideEditForm();
+            if (isEditFormOpen()) return;
+        }
+        if (isNewFormOpen()) {
+            hideNewArticleForm();
+            if (isNewFormOpen()) return;
+        }
         state.selectedArticle = article;
         if (!els.articleSelected) return;
-        els.articleSelected.hidden = false;
+        setWorkspaceView('selected');
         if (els.articleSelectedPath) els.articleSelectedPath.textContent = article.path;
         if (els.articleSelectedSha) els.articleSelectedSha.textContent = article.sha || '—';
         if (els.articleSelectedSize) els.articleSelectedSize.textContent = M.formatSize(article.size) || '—';
@@ -837,11 +859,76 @@
     }
 
     /* ============================================
+       Workspace view manager — only ONE panel is visible
+       ============================================ */
+
+    function isNewFormOpen() {
+        return !!(els.newArticleForm && !els.newArticleForm.hidden);
+    }
+
+    function isEditFormOpen() {
+        return !!(els.editForm && !els.editForm.hidden);
+    }
+
+    function setWorkspaceView(view) {
+        if (els.workspaceEmpty) els.workspaceEmpty.hidden = view !== 'empty';
+        if (els.articleSelected) els.articleSelected.hidden = view !== 'selected';
+        if (els.newArticleForm) els.newArticleForm.hidden = view !== 'new';
+        if (els.editForm) els.editForm.hidden = view !== 'edit';
+        if (document.body) {
+            document.body.classList.toggle('workspace-editing', view === 'edit' || view === 'new');
+            document.body.setAttribute('data-workspace-view', view);
+        }
+    }
+
+    function openMetaDrawer(kind) {
+        if (window.AdminLayout && window.AdminLayout.openMeta) {
+            window.AdminLayout.openMeta(kind);
+            return;
+        }
+        var prefix = kind === 'new' ? 'na' : 'ed';
+        var drawer = document.getElementById(prefix + '-meta-drawer');
+        var backdrop = document.getElementById(prefix + '-meta-backdrop');
+        if (drawer) drawer.hidden = false;
+        if (backdrop) backdrop.hidden = false;
+        if (document.body) document.body.classList.add('meta-open');
+    }
+
+    function closeMetaDrawer(kind) {
+        if (window.AdminLayout && window.AdminLayout.closeMeta) {
+            window.AdminLayout.closeMeta(kind);
+            return;
+        }
+        var prefix = kind === 'new' ? 'na' : 'ed';
+        var drawer = document.getElementById(prefix + '-meta-drawer');
+        var backdrop = document.getElementById(prefix + '-meta-backdrop');
+        if (drawer) drawer.hidden = true;
+        if (backdrop) backdrop.hidden = true;
+        if (document.body) document.body.classList.remove('meta-open');
+    }
+
+    function setEditState(text) {
+        if (els.edStateText) els.edStateText.textContent = text;
+    }
+
+    function setNewState(text) {
+        if (els.naStateText) els.naStateText.textContent = text;
+    }
+
+    function revealNewMeta() {
+        if (isNewFormOpen()) openMetaDrawer('new');
+    }
+
+    /* ============================================
        Stage 7 — Edit existing article flow
        ============================================ */
 
     function hideEditForm() {
         if (!els.editForm) return;
+        if (state.edit && state.edit.isSaving) {
+            U.toast('正在保存，请稍候…', 'warning');
+            return;
+        }
         var editPending = state.pendingUploads.filter(function (p) { return p.formMode === 'edit'; }).length;
         var msg = '当前编辑内容尚未保存，确定离开吗？';
         if (editPending > 0) {
@@ -860,13 +947,21 @@
             }
             return true;
         });
+        state.editGeneration++;
         state.edit = null;
+        // Re-enable controls that setEditSubmitting(true) disabled while a
+        // load was in flight; the stale response will be discarded by gen.
+        setEditSubmitting(false);
         if (els.editForm) els.editForm.hidden = true;
         if (els.edErrorBanner) els.edErrorBanner.hidden = true;
         if (els.edSuccessBanner) els.edSuccessBanner.hidden = true;
         if (els.edLoadStatus) els.edLoadStatus.hidden = true;
+        if (els.edConflictBanner) els.edConflictBanner.hidden = true;
+        closeMetaDrawer('edit');
         clearEditFormErrors();
         renderPendingList('edit');
+        setEditState('就绪');
+        setWorkspaceView(state.selectedArticle ? 'selected' : 'empty');
     }
 
     function clearEditFormErrors() {
@@ -891,19 +986,27 @@
         if (state.edit) state.edit.isSaving = submitting;
         if (els.edSaveBtn) els.edSaveBtn.disabled = submitting;
         if (els.edCancel) els.edCancel.disabled = submitting;
-        if (els.edCancel2) els.edCancel2.disabled = submitting;
         if (els.edTitle) els.edTitle.readOnly = submitting;
         if (els.edDate) els.edDate.readOnly = submitting;
         if (els.edCategories) els.edCategories.readOnly = submitting;
         if (els.edTags) els.edTags.readOnly = submitting;
         if (els.edBody) els.edBody.readOnly = submitting;
+        if (els.edPinned) els.edPinned.disabled = submitting;
         if (els.edDraft) els.edDraft.disabled = submitting;
         if (els.edMath) els.edMath.disabled = submitting;
         if (els.editArticleBtn) els.editArticleBtn.disabled = submitting;
+        if (els.newArticleBtn) els.newArticleBtn.disabled = submitting;
     }
 
 function loadArticleForEdit(path) {
-        if (state.formVisible) hideNewArticleForm();
+        if (isNewFormOpen()) {
+            hideNewArticleForm();
+            if (isNewFormOpen()) return;
+        }
+        if (isEditFormOpen() && state.edit && state.edit.path !== path) {
+            hideEditForm();
+            if (isEditFormOpen()) return;
+        }
         // Stage 14.1 — generation counter. Every open bumps the value;
         // stale API responses from an earlier open are discarded below.
         var gen = ++state.editGeneration;
@@ -948,6 +1051,9 @@ function loadArticleForEdit(path) {
             latestRaw: null,
             latestSha: null
         };
+        if (els.edDocPath) els.edDocPath.textContent = path;
+        setEditState('读取中…');
+        closeMetaDrawer('edit');
         // ----- Bug 5 fix: synchronously reset all UI + state that could
         // leak from the previous article. Without this, switching from
         // article A to B without typing would briefly show A's preview,
@@ -959,6 +1065,7 @@ function loadArticleForEdit(path) {
         if (els.edDate) els.edDate.value = '';
         if (els.edCategories) els.edCategories.value = '';
         if (els.edTags) els.edTags.value = '';
+        if (els.edPinned) els.edPinned.checked = false;
         if (els.edDraft) els.edDraft.checked = false;
         if (els.edMath) els.edMath.checked = false;
         // Drop any previous article's edit-mode pending images. We
@@ -978,7 +1085,7 @@ function loadArticleForEdit(path) {
             els.edImageError.textContent = '';
         }
 
-        if (els.editForm) els.editForm.hidden = false;
+        setWorkspaceView('edit');
         if (els.edLoadStatus) {
             els.edLoadStatus.textContent = '正在读取 GitHub 文件...';
             els.edLoadStatus.hidden = false;
@@ -1019,12 +1126,14 @@ function loadArticleForEdit(path) {
             if (els.edDate) els.edDate.value = fields && fields.date ? String(fields.date) : '';
             if (els.edCategories) els.edCategories.value = Array.isArray(fields && fields.categories) ? fields.categories.join(', ') : '';
             if (els.edTags) els.edTags.value = Array.isArray(fields && fields.tags) ? fields.tags.join(', ') : '';
+            if (els.edPinned) els.edPinned.checked = !!(fields && Number(fields.weight) > 0);
             if (els.edDraft) els.edDraft.checked = !!(fields && fields.draft);
             if (els.edMath) els.edMath.checked = !!(fields && fields.math);
             if (els.edBody) els.edBody.value = parsed.body != null ? parsed.body : '';
 
             if (els.edLoadStatus) els.edLoadStatus.hidden = true;
             state.edit.isLoading = false;
+            setEditState('就绪');
             // Render preview with the new article's body so the user
             // never sees stale HTML from a previous article.
             renderEditPreview();
@@ -1034,10 +1143,12 @@ function loadArticleForEdit(path) {
             if (gen !== state.editGeneration) return;
             handleApiError(err);
             state.edit = null;
-            if (els.editForm) els.editForm.hidden = true;
+            closeMetaDrawer('edit');
             if (els.edLoadStatus) els.edLoadStatus.hidden = true;
             setEditSubmitting(false);
-            setEditBanner('读取失败: ' + formatError(err), 'error');
+            setEditState('读取失败');
+            setWorkspaceView(state.selectedArticle ? 'selected' : 'empty');
+            U.toast('读取失败: ' + formatError(err), 'error');
         });
     }
 
@@ -1066,14 +1177,17 @@ function loadArticleForEdit(path) {
         if (els.edDate) els.edDate.value = fields && fields.date ? String(fields.date) : '';
         if (els.edCategories) els.edCategories.value = Array.isArray(fields && fields.categories) ? fields.categories.join(', ') : '';
         if (els.edTags) els.edTags.value = Array.isArray(fields && fields.tags) ? fields.tags.join(', ') : '';
+        if (els.edPinned) els.edPinned.checked = !!(fields && Number(fields.weight) > 0);
         if (els.edDraft) els.edDraft.checked = !!(fields && fields.draft);
         if (els.edMath) els.edMath.checked = !!(fields && fields.math);
         if (els.edBody) els.edBody.value = parsed.body != null ? parsed.body : '';
+        setEditState('就绪');
     }
 
     function markEditDirty() {
         if (state.edit && !state.edit.isSaving && !state.edit.isLoading) {
             state.edit.isDirty = true;
+            setEditState('未保存');
         }
     }
 
@@ -1146,6 +1260,14 @@ function loadArticleForEdit(path) {
             hasAny = true;
         }
 
+        // pinned (weight > 0). Pin writes weight: 1; unpin removes it.
+        var curPinned = !!(els.edPinned && els.edPinned.checked);
+        var origPinned = Number(originalFm.weight) > 0;
+        if (curPinned !== origPinned) {
+            changes.weight = curPinned ? 1 : '__DELETE__';
+            hasAny = true;
+        }
+
         // Body change
         var curBody = els.edBody ? els.edBody.value : '';
         var bodyChanged = curBody !== state.edit.originalBody;
@@ -1185,6 +1307,7 @@ function loadArticleForEdit(path) {
         if (collected.noChange && editPending.length === 0) {
             setEditBanner('没有检测到修改，未提交。', 'success');
             edit.isDirty = false;
+            setEditState('已保存');
             return;
         }
 
@@ -1205,6 +1328,7 @@ function loadArticleForEdit(path) {
         }
 
         setEditSubmitting(true);
+        setEditState('保存中…');
 
         // Stage 14.5 — edit + images: one atomic commit via Git Data API.
         if (editPending.length > 0) {
@@ -1214,6 +1338,7 @@ function loadArticleForEdit(path) {
                     return showConflictWithLatest(edit);
                 }
                 setEditBanner(formatError(err), 'error');
+                setEditState('保存失败');
             }).then(function () {
                 setEditSubmitting(false);
             });
@@ -1270,6 +1395,7 @@ function loadArticleForEdit(path) {
                 edit.latestRaw = finalRaw;
                 edit.latestSha = result.sha;
                 edit.isDirty = false;
+                setEditState('已保存');
                 setEditBanner('已保存（Commit ' + (result.commitSha || '').slice(0, 7) + '）。等待自动部署。', 'success');
 
                 API.getFile(state.token, edit.path).then(function (reloaded) {
@@ -1285,6 +1411,7 @@ function loadArticleForEdit(path) {
                 return showConflictWithLatest(edit);
             }
             setEditBanner(formatError(err), 'error');
+            setEditState('保存失败');
         }).then(function () {
             setEditSubmitting(false);
         });
@@ -1299,6 +1426,7 @@ function loadArticleForEdit(path) {
         if (els.edErrorBanner) els.edErrorBanner.hidden = true;
         if (els.edSuccessBanner) els.edSuccessBanner.hidden = true;
         if (els.edConflictBanner) els.edConflictBanner.hidden = false;
+        setEditState('冲突');
         if (state.edit) {
             state.edit.isSaving = false;
             setEditSubmitting(false);
@@ -1336,11 +1464,13 @@ function loadArticleForEdit(path) {
         };
         reloadEditFromLatest(file);
         hideConflictUI();
+        setEditState('就绪');
         setEditBanner('已从远程重新加载。可以继续编辑。', 'success');
     }
 
     function keepLocalEdits() {
         hideConflictUI();
+        setEditState('未保存');
         setEditBanner('当前内容尚未保存。远程版本已变化，再次保存时会再次校验 baseline。', 'success');
     }
 
@@ -1550,6 +1680,7 @@ function loadArticleForEdit(path) {
             edit.latestRaw = finalRaw;
             edit.latestSha = null;
             edit.isDirty = false;
+            setEditState('已保存');
 
             setEditBanner('已保存（含 ' + imageCount + ' 张图片，Commit ' + shortSha +
                 '）。等待自动部署。', 'success');
@@ -1677,6 +1808,7 @@ function updateEditCdnStatus() {
      */
     function openDeleteModal() {
         if (!state.edit || state.edit.isSaving || !els.edDeleteModal) return;
+        closeMetaDrawer('edit');
         if (els.edDeleteError) { els.edDeleteError.hidden = true; els.edDeleteError.textContent = ''; }
 
         var article = state.edit;
@@ -1858,9 +1990,21 @@ function updateEditCdnStatus() {
             // Success.
             closeDeleteModal();
             state.edit = null;
-            if (els.editForm) els.editForm.hidden = true;
-            setEditBanner('已删除 ' + dp.paths.length + ' 个文件（Commit ' +
-                (result.commitSha || '').slice(0, 7) + '）。等待 GitHub Actions 自动部署。', 'success');
+            state.selectedArticle = null;
+            closeMetaDrawer('edit');
+            state.pendingUploads = state.pendingUploads.filter(function (p) {
+                if (p.formMode === 'edit') {
+                    if (p.previewUrl) {
+                        try { URL.revokeObjectURL(p.previewUrl); } catch (e) { /* ignore */ }
+                    }
+                    return false;
+                }
+                return true;
+            });
+            renderPendingList('edit');
+            setWorkspaceView('empty');
+            U.toast('已删除 ' + dp.paths.length + ' 个文件（Commit ' +
+                (result.commitSha || '').slice(0, 7) + '）。等待自动部署。', 'success');
             loadArticlesFresh(); // refresh tree from GitHub (bypass CDN cache)
         }).catch(function (err) {
             handleApiError(err);
@@ -1910,15 +2054,16 @@ function updateEditCdnStatus() {
                     state.edit = null;
                 }
                 state.selectedArticle = null;
-                if (els.articleSelected) els.articleSelected.hidden = true;
-                if (els.editForm) els.editForm.hidden = true;
+                closeMetaDrawer('edit');
+                setEditState('就绪');
                 if (els.edErrorBanner) els.edErrorBanner.hidden = true;
                 if (els.edSuccessBanner) els.edSuccessBanner.hidden = true;
                 if (els.edLoadStatus) els.edLoadStatus.hidden = true;
                 if (els.edConflictBanner) els.edConflictBanner.hidden = true;
+                setWorkspaceView('empty');
             });
         }
-        var cancelHandlers = [els.edCancel, els.edCancel2];
+        var cancelHandlers = [els.edCancel];
         for (var i = 0; i < cancelHandlers.length; i++) {
             if (cancelHandlers[i]) {
                 cancelHandlers[i].addEventListener('click', function () { hideEditForm(); });
@@ -1955,7 +2100,7 @@ function updateEditCdnStatus() {
         for (var j = 0; j < dirtyEls.length; j++) {
             if (dirtyEls[j]) dirtyEls[j].addEventListener('input', markEditDirty);
         }
-        var dirtyChecks = [els.edDraft, els.edMath];
+        var dirtyChecks = [els.edPinned, els.edDraft, els.edMath];
         for (var k = 0; k < dirtyChecks.length; k++) {
             if (dirtyChecks[k]) dirtyChecks[k].addEventListener('change', markEditDirty);
         }
@@ -1985,19 +2130,40 @@ function updateEditCdnStatus() {
        ============================================ */
 
     function showNewArticleForm() {
+        if (isNewFormOpen()) {
+            if (els.naTitle) els.naTitle.focus();
+            return;
+        }
+        // A new article must never stack on top of an open editor. Prompt
+        // through hideEditForm() and abort if the user cancels.
+        if (isEditFormOpen()) {
+            hideEditForm();
+            if (isEditFormOpen()) return;
+        }
         state.formVisible = true;
         state.formDirty = false;
         state.formSubmitting = false;
-        if (els.newArticleForm) els.newArticleForm.hidden = false;
+        setWorkspaceView('new');
         // Pre-fill date with today (local timezone).
         if (els.naDate && !els.naDate.value) {
             els.naDate.value = M.formatLocalDate(new Date());
         }
         updatePathPreview();
-        if (els.naTitle) els.naTitle.focus();
+        setNewState('新建');
+        closeMetaDrawer('edit');
+        // New articles have no title inline with the editor — open the
+        // meta drawer so the required title/date fields are visible.
+        openMetaDrawer('new');
+        window.setTimeout(function () {
+            if (isNewFormOpen() && els.naTitle) els.naTitle.focus();
+        }, 80);
     }
 
     function hideNewArticleForm() {
+        if (!isNewFormOpen()) {
+            state.formVisible = false;
+            return;
+        }
         var newPending = state.pendingUploads.filter(function (p) { return p.formMode === 'new'; }).length;
         var msg = '当前编辑内容尚未保存，确定关闭吗？';
         if (newPending > 0) {
@@ -2016,29 +2182,37 @@ function updateEditCdnStatus() {
         });
         state.formVisible = false;
         state.formDirty = false;
-        if (els.newArticleForm) els.newArticleForm.hidden = true;
+        closeMetaDrawer('new');
         clearFormErrors();
         renderPendingList('new');
+        resetForm();
+        setWorkspaceView(state.selectedArticle ? 'selected' : 'empty');
     }
 
     function resetForm() {
         if (els.naTitle) els.naTitle.value = '';
         if (els.naDate) els.naDate.value = M.formatLocalDate(new Date());
-        if (els.naFilename) els.naFilename.value = ''; // Stage 14.1 — slug override starts empty.
         if (els.naCategories) els.naCategories.value = '';
         if (els.naTags) els.naTags.value = '';
+        if (els.naPinned) els.naPinned.checked = false;
         if (els.naDraft) els.naDraft.checked = true;
         if (els.naMath) els.naMath.checked = false;
         if (els.naBody) els.naBody.value = '';
+        if (els.naImageError) {
+            els.naImageError.hidden = true;
+            els.naImageError.textContent = '';
+        }
         state.formDirty = false;
+        state.newArticlePath = null;
+        state.newArticleSlug = null;
         clearFormErrors();
         updatePathPreview();
+        setNewState('新建');
     }
 
     function clearFormErrors() {
         if (els.naTitleError) { els.naTitleError.textContent = ''; els.naTitleError.classList.remove('error'); }
         if (els.naDateError) { els.naDateError.textContent = ''; els.naDateError.classList.remove('error'); }
-        if (els.naFilenameError) { els.naFilenameError.textContent = ''; els.naFilenameError.classList.remove('error'); }
         if (els.naErrorBanner) els.naErrorBanner.hidden = true;
     }
 
@@ -2046,7 +2220,6 @@ function updateEditCdnStatus() {
         var el = null;
         if (field === 'title') el = els.naTitleError;
         else if (field === 'date') el = els.naDateError;
-        else if (field === 'filename') el = els.naFilenameError;
         if (el) {
             el.textContent = message;
             el.classList.add('error');
@@ -2066,10 +2239,8 @@ function updateEditCdnStatus() {
 function updatePathPreview() {
         if (!els.naPathPreview) return;
         var dateStr = (els.naDate && els.naDate.value) || M.formatLocalDate(new Date());
-        // Stage 14.4B — final article file is always `index.md`; assets
-        // directory is always `index.assets/`. The form's filename input
-        // is preserved as an advanced-override hook but does NOT affect
-        // the written path. The slug still comes from the title.
+        // The final article file is always `index.md`; assets directory is
+        // always `index.assets/`. The slug is derived from the title.
         var title = (els.naTitle && els.naTitle.value || '').trim();
         var slug = M.slugify(title);
         if (!slug) {
@@ -2082,6 +2253,7 @@ function updatePathPreview() {
     function markDirty() {
         if (!state.formSubmitting) {
             state.formDirty = true;
+            setNewState('未保存');
         }
     }
 
@@ -2089,13 +2261,9 @@ function collectFormData() {
         return {
             title: (els.naTitle && els.naTitle.value || '').trim(),
             date: (els.naDate && els.naDate.value) || '',
-            // Stage 14.4B — `filename` field is no longer read by the
-            // submit path. We still keep the element on the form so
-            // legacy UI / future advanced override hooks can read it,
-            // but `index.md` is the only file name we ever write.
-            filename: ((els.naFilename && els.naFilename.value) || '').trim(),
             categories: M.parseCategoriesInput(els.naCategories && els.naCategories.value || ''),
             tags: M.parseTagsInput(els.naTags && els.naTags.value || ''),
+            pinned: !!(els.naPinned && els.naPinned.checked),
             draft: !!(els.naDraft && els.naDraft.checked),
             math: !!(els.naMath && els.naMath.checked),
             body: (els.naBody && els.naBody.value || '').trim()
@@ -2107,16 +2275,16 @@ function collectFormData() {
         if (els.naSaveDraft) els.naSaveDraft.disabled = submitting;
         if (els.naPublish) els.naPublish.disabled = submitting;
         if (els.naCancel) els.naCancel.disabled = submitting;
-        if (els.naCancel2) els.naCancel2.disabled = submitting;
         if (els.naTitle) els.naTitle.readOnly = submitting;
         if (els.naDate) els.naDate.readOnly = submitting;
-        if (els.naFilename) els.naFilename.readOnly = submitting;
         if (els.naCategories) els.naCategories.readOnly = submitting;
         if (els.naTags) els.naTags.readOnly = submitting;
         if (els.naBody) els.naBody.readOnly = submitting;
+        if (els.naPinned) els.naPinned.disabled = submitting;
         if (els.naDraft) els.naDraft.disabled = submitting;
         if (els.naMath) els.naMath.disabled = submitting;
         if (els.newArticleBtn) els.newArticleBtn.disabled = submitting;
+        if (submitting) setNewState('提交中…');
     }
 
     /**
@@ -2169,6 +2337,7 @@ function collectFormData() {
             if (validation.errors.date) setFormFieldError('date', validation.errors.date);
             if (validation.errors.categories) setFormBanner(validation.errors.categories);
             if (validation.errors.tags) setFormBanner(validation.errors.tags);
+            revealNewMeta();
             return;
         }
 
@@ -2181,6 +2350,7 @@ function collectFormData() {
         var baseSlug = M.slugify(formData.title);
         if (!baseSlug) {
             setFormFieldError('title', '无法从标题派生 slug，请输入有效标题');
+            revealNewMeta();
             return;
         }
         var dateStr = formData.date;
@@ -2195,6 +2365,7 @@ function collectFormData() {
         })();
         if (!datePath) {
             setFormFieldError('date', '无法生成日期路径');
+            revealNewMeta();
             return;
         }
 
@@ -2261,6 +2432,7 @@ function collectFormData() {
         }).catch(function (err) {
             handleApiError(err);
             setFormBanner(formatError(err));
+            setNewState('提交失败');
             // Keep state.newArticlePath / newArticleSlug so the user can
             // edit + retry without re-resolving the slug.
         }).then(function () {
@@ -2420,7 +2592,7 @@ function collectFormData() {
                 }
             });
         }
-        var cancelHandlers = [els.naCancel, els.naCancel2];
+        var cancelHandlers = [els.naCancel];
         for (var i = 0; i < cancelHandlers.length; i++) {
             if (cancelHandlers[i]) {
                 cancelHandlers[i].addEventListener('click', function () {
@@ -2434,18 +2606,12 @@ function collectFormData() {
                 markDirty();
             });
         }
-        if (els.naFilename) {
-            els.naFilename.addEventListener('input', function () {
-                updatePathPreview();
-                markDirty();
-            });
-        }
         // Mark dirty on any input change.
         var dirtyEls = [els.naTitle, els.naCategories, els.naTags, els.naBody];
         for (var j = 0; j < dirtyEls.length; j++) {
             if (dirtyEls[j]) dirtyEls[j].addEventListener('input', markDirty);
         }
-        var dirtyChecks = [els.naDraft, els.naMath];
+        var dirtyChecks = [els.naPinned, els.naDraft, els.naMath];
         for (var k = 0; k < dirtyChecks.length; k++) {
             if (dirtyChecks[k]) dirtyChecks[k].addEventListener('change', markDirty);
         }
@@ -2614,7 +2780,7 @@ function collectFormData() {
         return -1;
     }
 
-function addPendingUpload(file, formMode, articlePathOrFilename) {
+function addPendingUpload(file, formMode) {
         var IU = window.ImageUpload;
         var validation = IU.validateImage(file);
         if (!validation.ok) {
@@ -2833,11 +2999,11 @@ function addPendingUpload(file, formMode, articlePathOrFilename) {
         }
     }
 
-    function handleImageFiles(formMode, files, textarea, articlePathOrFilename) {
+    function handleImageFiles(formMode, files, textarea) {
         if (!files || !files.length) return;
         hideImageError(formMode);
         for (var i = 0; i < files.length; i++) {
-            var pending = addPendingUpload(files[i], formMode, articlePathOrFilename);
+            var pending = addPendingUpload(files[i], formMode);
             if (pending && textarea) {
                 // Insert Markdown at cursor and leave cursor after.
                 // Stage 14.4B — assets are always in `index.assets/`. The
@@ -2855,28 +3021,21 @@ function addPendingUpload(file, formMode, articlePathOrFilename) {
     }
 
     function setupImageSection(formMode) {
-        var btn, input, textarea, articlePathOrFilename;
+        var btn, input, textarea;
         if (formMode === 'new') {
             btn = els.naInsertImageBtn;
             input = els.naImageInput;
             textarea = els.naBody;
-            // For new articles the user may override the filename via the
-            // "Filename" input; we read it live so the inserted markdown
-            // link matches whatever is current in the form at click time.
-            articlePathOrFilename = els.naFilename ? els.naFilename.value : '';
         } else {
             btn = els.edInsertImageBtn;
             input = els.edImageInput;
             textarea = els.edBody;
-            // edit form reads fileBaseName directly from state.edit; the
-            // articlePathOrFilename argument is unused here.
-            articlePathOrFilename = null;
         }
         if (!btn || !input) return;
 
         btn.addEventListener('click', function () { input.click(); });
         input.addEventListener('change', function () {
-            handleImageFiles(formMode, input.files, textarea, articlePathOrFilename);
+            handleImageFiles(formMode, input.files, textarea);
             input.value = ''; // allow re-selecting the same file
         });
 
@@ -2900,7 +3059,7 @@ function addPendingUpload(file, formMode, articlePathOrFilename) {
                 textarea.classList.remove('is-drop-target');
                 if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
                     e.preventDefault();
-                    handleImageFiles(formMode, e.dataTransfer.files, textarea, articlePathOrFilename);
+                    handleImageFiles(formMode, e.dataTransfer.files, textarea);
                 }
             });
         }
@@ -3066,6 +3225,7 @@ function addPendingUpload(file, formMode, articlePathOrFilename) {
         wireEditForm();
         setupImageSection('new');
         setupImageSection('edit');
+        setWorkspaceView('empty');
     }
 
     if (document.readyState === 'loading') {

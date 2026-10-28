@@ -46,7 +46,8 @@ var jsFiles = [
     'static/admin/js/frontmatter.js',
     'static/admin/js/markdown.js',
     'static/admin/js/image.js',
-    'static/admin/js/utils.js'
+    'static/admin/js/utils.js',
+    'static/admin/js/layout.js'
 ];
 
 jsFiles.forEach(function (rel) {

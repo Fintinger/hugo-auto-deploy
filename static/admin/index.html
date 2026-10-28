@@ -115,10 +115,9 @@
                 清除凭证
             </button>
         </div>
-
-        <div class="toast-wrap" id="toast-wrap" aria-live="polite"></div>
     </section>
 
+    <aside class="admin-sidebar" id="admin-sidebar">
     <section class="card connected-card" id="connection-info" hidden>
         <div class="card-header">
             <h3>
@@ -144,9 +143,6 @@
                 断开连接
             </button>
         </div>
-        <p class="hint" style="margin-top: 0.85rem;">
-            本阶段仅完成 Token / 仓库 / 分支验证。文章列表、编辑器、图片上传将在后续阶段实现。
-        </p>
     </section>
 
     <section class="card article-list-card" id="article-list-card" hidden>
@@ -174,116 +170,6 @@
             <input id="article-search" type="search" class="input" placeholder="搜索文件名 / 路径 / 年月日……" autocomplete="off" spellcheck="false">
         </div>
 
-        <section class="new-article-form" id="new-article-form" hidden>
-            <div class="form-header">
-                <h4>新建文章</h4>
-                <button type="button" class="btn btn-ghost btn-sm" id="new-article-cancel" aria-label="取消新建">
-                    取消
-                </button>
-            </div>
-
-            <div class="form-row">
-                <label for="na-title" class="label">标题 <span class="required">*</span></label>
-                <input id="na-title" type="text" class="input" placeholder="例如：在线博客编辑测试" maxlength="200" autocomplete="off">
-                <p class="hint" id="na-title-error"></p>
-            </div>
-
-            <div class="form-row">
-                <label for="na-date" class="label">日期 <span class="required">*</span></label>
-                <input id="na-date" type="date" class="input" autocomplete="off">
-                <p class="hint">生成路径：<code id="na-path-preview">content/posts/.../index.md</code></p>
-                <p class="hint" id="na-date-error"></p>
-            </div>
-
-            <div class="form-row">
-                <label for="na-filename" class="label">Slug（高级）</label>
-                <input id="na-filename" type="text" class="input" value="" placeholder="（留空则按标题自动派生）" maxlength="80" autocomplete="off" spellcheck="false">
-                <p class="hint">Stage 14.4B — Slug 仅影响路径 <code>content/posts/YYYY/MM/DD/&lt;slug&gt;/index.md</code>。文章文件始终为 <code>index.md</code>（不可改），图片目录始终为 <code>index.assets/</code>。同一天同一 slug 自动追加 <code>-2</code> / <code>-3</code>。</p>
-                <p class="hint" id="na-filename-error"></p>
-            </div>
-
-            <div class="form-row">
-                <label for="na-categories" class="label">分类</label>
-                <input id="na-categories" type="text" class="input" placeholder="例如：前端, 后端 （用逗号或换行分隔）" autocomplete="off">
-                <p class="hint">留空表示无分类</p>
-            </div>
-
-            <div class="form-row">
-                <label for="na-tags" class="label">标签</label>
-                <input id="na-tags" type="text" class="input" placeholder="例如：Hugo, GitHub, 在线编辑" autocomplete="off">
-                <p class="hint">留空表示无标签</p>
-            </div>
-
-            <div class="form-row checkbox-row">
-                <label class="checkbox-label">
-                    <input id="na-draft" type="checkbox" checked>
-                    <span>保存为草稿（draft: true，不进入生产构建）</span>
-                </label>
-            </div>
-
-            <div class="form-row checkbox-row">
-                <label class="checkbox-label">
-                    <input id="na-math" type="checkbox">
-                    <span>启用数学公式（math: true）</span>
-                </label>
-            </div>
-
-            <div class="form-row">
-                <label for="na-body" class="label">正文（Markdown）</label>
-                <div class="editor-toolbar">
-                    <button type="button" class="editor-tab active" data-editor-tab="edit" id="editor-tab-edit">编辑</button>
-                    <button type="button" class="editor-tab" data-editor-tab="preview" id="editor-tab-preview">预览</button>
-                    <span class="muted small editor-note" id="editor-cdn-status"></span>
-                </div>
-                <div class="editor-split">
-                    <div class="editor-pane" id="editor-pane">
-                        <textarea id="na-body" class="input textarea" rows="14" placeholder="Markdown 内容……&#10;&#10;预览仅供参考。Hugo Shortcode 在 Admin 中以占位形式显示，正式页面由 Hugo 渲染。&#10;&#10;可拖拽图片到此处上传（仅支持 png/jpg/gif/webp，≤5MB）。" spellcheck="false"></textarea>
-                    </div>
-                    <div class="preview-pane" id="preview-pane" aria-live="polite">
-                        <div class="markdown-preview" id="markdown-preview"></div>
-                    </div>
-                </div>
-                <p class="hint">预览说明：用于 Markdown 编写辅助。Hugo Shortcode、部分 Hugo Goldmark 特性、最终页面样式将在 Hugo 构建后确定。</p>
-
-                <!-- Stage 9A: image upload section -->
-                <div class="image-upload-section" id="na-image-section">
-                    <div class="image-upload-toolbar">
-                        <button type="button" class="btn btn-ghost btn-sm" id="na-insert-image-btn">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-                            </svg>
-                            插入图片
-                        </button>
-                        <input type="file" id="na-image-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden multiple>
-                        <span class="muted small" id="na-image-hint">支持 png / jpg / gif / webp，≤5MB</span>
-                    </div>
-                    <div class="pending-list" id="na-pending-list" hidden>
-                        <p class="muted small">待上传图片（<span class="pending-count">0</span>）：</p>
-                        <div class="pending-items" id="na-pending-items"></div>
-                    </div>
-                    <p class="hint error" id="na-image-error" hidden></p>
-                </div>
-            </div>
-
-            <div class="banner banner-error" id="na-error-banner" hidden></div>
-
-            <div class="actions">
-                <button type="button" class="btn btn-primary" id="na-save-draft">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
-                    </svg>
-                    保存草稿
-                </button>
-                <button type="button" class="btn btn-ghost" id="na-publish">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                    </svg>
-                    发布
-                </button>
-                <button type="button" class="btn btn-ghost" id="na-cancel-2" hidden>取消</button>
-            </div>
-        </section>
-
         <div class="banner banner-warning" id="tree-truncated-banner" hidden>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -298,6 +184,15 @@
 
         <div class="article-tree" id="article-tree" role="tree" aria-label="文章目录树"></div>
 
+    </section>
+    </aside>
+
+    <div class="workspace-main" id="workspace-main">
+        <div class="workspace-empty" id="workspace-empty">
+            <span class="workspace-empty-kicker">WORKSPACE</span>
+            <h2>从左侧选择一篇文章</h2>
+            <p>也可以新建一篇；编辑器会在这里打开。</p>
+        </div>
         <div class="article-selected" id="article-selected" hidden>
             <div class="selected-label muted small">已选择</div>
             <div class="selected-path" id="article-selected-path"></div>
@@ -322,15 +217,170 @@
             </div>
         </div>
 
-        <section class="new-article-form edit-article-form" id="edit-article-form" hidden>
-            <div class="form-header">
-                <h4>编辑文章</h4>
-                <button type="button" class="btn btn-ghost btn-sm" id="edit-cancel-btn" aria-label="取消编辑">取消</button>
+        <section class="new-article-form editor-shell" id="new-article-form" hidden>
+            <div class="form-header editor-head">
+                <div class="editor-head-main">
+                    <h4>新建文章</h4>
+                    <span class="editor-state" id="na-state-text">新建</span>
+                </div>
+                <div class="editor-head-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" id="na-meta-open">文章信息</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="na-save-draft">保存草稿</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="na-publish">发布</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="new-article-cancel" aria-label="取消新建">取消</button>
+                </div>
+            </div>
+
+            <div class="editor-meta-drawer" id="na-meta-drawer" hidden>
+                <div class="editor-meta-head">
+                    <div>
+                        <span class="editor-meta-kicker">ARTICLE META</span>
+                        <h4>文章信息</h4>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-sm" id="na-meta-close">关闭</button>
+                </div>
+                <div class="editor-meta-body">
+                    <div class="form-row">
+                        <label for="na-title" class="label">标题 <span class="required">*</span></label>
+                        <input id="na-title" type="text" class="input" placeholder="例如：在线博客编辑测试" maxlength="200" autocomplete="off">
+                        <p class="hint" id="na-title-error"></p>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="na-date" class="label">日期 <span class="required">*</span></label>
+                        <input id="na-date" type="date" class="input" autocomplete="off">
+                        <p class="hint">生成路径：<code id="na-path-preview">content/posts/.../index.md</code></p>
+                        <p class="hint" id="na-date-error"></p>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="na-categories" class="label">分类</label>
+                        <input id="na-categories" type="text" class="input" placeholder="例如：前端, 后端 （用逗号或换行分隔）" autocomplete="off">
+                        <p class="hint">留空表示无分类</p>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="na-tags" class="label">标签</label>
+                        <input id="na-tags" type="text" class="input" placeholder="例如：Hugo, GitHub, 在线编辑" autocomplete="off">
+                        <p class="hint">留空表示无标签</p>
+                    </div>
+
+                    <div class="editor-flags">
+                        <label class="editor-flag" for="na-pinned">
+                            <input id="na-pinned" type="checkbox">
+                            <span>
+                                <strong>置顶文章</strong>
+                                <small>写入 weight: 1，在文章列表与首页优先展示</small>
+                            </span>
+                        </label>
+                        <label class="editor-flag" for="na-draft">
+                            <input id="na-draft" type="checkbox" checked>
+                            <span>
+                                <strong>保存为草稿</strong>
+                                <small>draft: true，不进入生产构建</small>
+                            </span>
+                        </label>
+                        <label class="editor-flag" for="na-math">
+                            <input id="na-math" type="checkbox">
+                            <span>
+                                <strong>启用数学公式</strong>
+                                <small>math: true，文章内启用 KaTeX</small>
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="image-upload-section" id="na-image-section">
+                        <div class="image-upload-toolbar">
+                            <button type="button" class="btn btn-ghost btn-sm" id="na-insert-image-btn">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                                </svg>
+                                插入图片
+                            </button>
+                            <input type="file" id="na-image-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden multiple>
+                            <span class="muted small" id="na-image-hint">支持 png / jpg / gif / webp，≤5MB</span>
+                        </div>
+                        <div class="pending-list" id="na-pending-list" hidden>
+                            <p class="muted small">待上传图片（<span class="pending-count">0</span>）：</p>
+                            <div class="pending-items" id="na-pending-items"></div>
+                        </div>
+                        <p class="hint error" id="na-image-error" hidden></p>
+                    </div>
+                </div>
+                <div class="editor-meta-foot">
+                    <button type="button" class="btn btn-ghost btn-sm" data-meta-click="new-article-cancel">取消</button>
+                    <button type="button" class="btn btn-ghost btn-sm" data-meta-click="na-save-draft">保存草稿</button>
+                    <button type="button" class="btn btn-primary btn-sm" data-meta-click="na-publish">发布</button>
+                </div>
+            </div>
+            <div class="editor-meta-backdrop" id="na-meta-backdrop" hidden></div>
+
+            <div class="banner banner-error" id="na-error-banner" hidden></div>
+
+            <div class="editor-body">
+                <div class="editor-toolbar">
+                    <button type="button" class="editor-tab active" data-editor-tab="edit" id="editor-tab-edit">编辑</button>
+                    <button type="button" class="editor-tab" data-editor-tab="preview" id="editor-tab-preview">预览</button>
+                    <span class="muted small editor-note" id="editor-cdn-status"></span>
+                </div>
+                <div class="editor-split">
+                    <div class="editor-pane" id="editor-pane">
+                        <textarea id="na-body" class="input textarea" rows="14" placeholder="Markdown 内容……&#10;&#10;预览仅供参考。Hugo Shortcode 在 Admin 中以占位形式显示，正式页面由 Hugo 渲染。&#10;&#10;可拖拽图片到此处上传（仅支持 png/jpg/gif/webp，≤5MB）。" spellcheck="false"></textarea>
+                    </div>
+                    <div class="preview-pane" id="preview-pane" aria-live="polite">
+                        <div class="markdown-preview" id="markdown-preview"></div>
+                    </div>
+                </div>
+                <p class="hint editor-hint">Markdown 预览仅供参考；Hugo Shortcode 与 Goldmark 细节以最终构建为准。</p>
+            </div>
+        </section>
+
+        <section class="new-article-form edit-article-form editor-shell" id="edit-article-form" hidden>
+            <div class="form-header editor-head">
+                <div class="editor-head-main">
+                    <h4>编辑文章</h4>
+                    <span class="editor-state" id="ed-state-text">就绪</span>
+                    <span class="editor-doc-path" id="ed-doc-path"></span>
+                </div>
+                <div class="editor-head-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" id="ed-meta-open">文章信息</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="ed-save-btn">保存</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="edit-cancel-btn" aria-label="取消编辑">取消</button>
+                </div>
             </div>
 
             <div class="banner banner-warning" id="edit-load-status" hidden></div>
+            <div class="banner banner-error" id="ed-error-banner" hidden></div>
+            <div class="banner banner-success" id="ed-success-banner" hidden></div>
+            <div class="banner banner-warning" id="ed-conflict-banner" hidden>
+                <div>
+                    <strong>远程文章已发生变化。</strong>
+                    <span class="muted small" style="display:block; margin-top: 0.3rem;">你的本地修改没有覆盖远程版本。</span>
+                </div>
+                <div class="actions" style="margin-top: 0.6rem;">
+                    <button type="button" class="btn btn-primary btn-sm" id="ed-conflict-reload-btn">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                        重新加载远程版本
+                    </button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="ed-conflict-keep-btn">
+                        保留当前编辑内容
+                    </button>
+                </div>
+            </div>
 
-            <div class="form-row">
+            <div class="editor-meta-drawer" id="ed-meta-drawer" hidden>
+    <div class="editor-meta-head">
+        <div>
+            <span class="editor-meta-kicker">ARTICLE META</span>
+            <h4>文章信息</h4>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="ed-meta-close">关闭</button>
+    </div>
+    <div class="editor-meta-body">
+<div class="form-row">
                 <label for="ed-title" class="label">标题</label>
                 <input id="ed-title" type="text" class="input" placeholder="标题" maxlength="200" autocomplete="off">
                 <p class="hint" id="ed-title-error"></p>
@@ -354,61 +404,48 @@
                 <p class="hint">未编辑则保持原样</p>
             </div>
 
-            <div class="form-row checkbox-row">
-                <label class="checkbox-label">
+            <div class="editor-flags">
+                <label class="editor-flag" for="ed-pinned">
+                    <input id="ed-pinned" type="checkbox">
+                    <span>
+                        <strong>置顶文章</strong>
+                        <small>写入 weight: 1；取消后移除 weight</small>
+                    </span>
+                </label>
+                <label class="editor-flag" for="ed-draft">
                     <input id="ed-draft" type="checkbox">
-                    <span>保存为草稿（draft: true，不进入生产构建）</span>
+                    <span>
+                        <strong>保存为草稿</strong>
+                        <small>draft: true，不进入生产构建</small>
+                    </span>
                 </label>
-            </div>
-
-            <div class="form-row checkbox-row">
-                <label class="checkbox-label">
+                <label class="editor-flag" for="ed-math">
                     <input id="ed-math" type="checkbox">
-                    <span>启用数学公式（math: true）</span>
+                    <span>
+                        <strong>启用数学公式</strong>
+                        <small>math: true，文章内启用 KaTeX</small>
+                    </span>
                 </label>
             </div>
 
-            <div class="form-row">
-                <label class="label">正文（Markdown）</label>
-                <div class="editor-toolbar">
-                    <button type="button" class="editor-tab active" data-editor-tab="edit" id="ed-editor-tab-edit">编辑</button>
-                    <button type="button" class="editor-tab" data-editor-tab="preview" id="ed-editor-tab-preview">预览</button>
-                    <span class="muted small editor-note" id="ed-editor-cdn-status"></span>
+            <div class="image-upload-section" id="ed-image-section">
+                <div class="image-upload-toolbar">
+                    <button type="button" class="btn btn-ghost btn-sm" id="ed-insert-image-btn">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                        </svg>
+                        插入图片
+                    </button>
+                    <input type="file" id="ed-image-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden multiple>
+                    <span class="muted small" id="ed-image-hint">支持 png / jpg / gif / webp，≤5MB</span>
                 </div>
-                <div class="editor-split" id="ed-editor-split" data-active="edit">
-                    <div class="editor-pane" id="ed-editor-pane">
-                        <textarea id="ed-body" class="input textarea" rows="14" placeholder="正文…&#10;&#10;可拖拽图片到此处上传（仅支持 png/jpg/gif/webp，≤5MB）。" spellcheck="false"></textarea>
-                    </div>
-                    <div class="preview-pane" id="ed-preview-pane" aria-live="polite">
-                        <div class="markdown-preview" id="ed-markdown-preview"></div>
-                    </div>
+                <div class="pending-list" id="ed-pending-list" hidden>
+                    <p class="muted small">待上传图片（<span class="pending-count">0</span>）：</p>
+                    <div class="pending-items" id="ed-pending-items"></div>
                 </div>
-                <p class="hint">预览说明：用于 Markdown 编写辅助。Hugo Shortcode、部分 Hugo Goldmark 特性、最终页面样式将在 Hugo 构建后确定。</p>
-
-                <!-- Stage 9A: image upload section -->
-                <div class="image-upload-section" id="ed-image-section">
-                    <div class="image-upload-toolbar">
-                        <button type="button" class="btn btn-ghost btn-sm" id="ed-insert-image-btn">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-                            </svg>
-                            插入图片
-                        </button>
-                        <input type="file" id="ed-image-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden multiple>
-                        <span class="muted small" id="ed-image-hint">支持 png / jpg / gif / webp，≤5MB</span>
-                    </div>
-                    <div class="pending-list" id="ed-pending-list" hidden>
-                        <p class="muted small">待上传图片（<span class="pending-count">0</span>）：</p>
-                        <div class="pending-items" id="ed-pending-items"></div>
-                    </div>
-                    <p class="hint error" id="ed-image-error" hidden></p>
-                </div>
+                <p class="hint error" id="ed-image-error" hidden></p>
             </div>
 
-            <div class="banner banner-error" id="ed-error-banner" hidden></div>
-            <div class="banner banner-success" id="ed-success-banner" hidden></div>
-
-            <!-- Stage 8: danger zone -->
             <details class="danger-zone" id="ed-danger-zone">
                 <summary>危险操作</summary>
                 <div class="danger-content">
@@ -426,34 +463,28 @@
                     </div>
                 </div>
             </details>
-
-            <div class="banner banner-warning" id="ed-conflict-banner" hidden>
-                <div>
-                    <strong>远程文章已发生变化。</strong>
-                    <span class="muted small" style="display:block; margin-top: 0.3rem;">你的本地修改没有覆盖远程版本。</span>
                 </div>
-                <div class="actions" style="margin-top: 0.6rem;">
-                    <button type="button" class="btn btn-primary btn-sm" id="ed-conflict-reload-btn">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                        </svg>
-                        重新加载远程版本
-                    </button>
-                    <button type="button" class="btn btn-ghost btn-sm" id="ed-conflict-keep-btn">
-                        保留当前编辑内容
-                    </button>
+                <div class="editor-meta-foot">
+                    <button type="button" class="btn btn-ghost btn-sm" data-drawer-close="edit">关闭</button>
+                    <button type="button" class="btn btn-primary btn-sm" data-meta-click="ed-save-btn">保存</button>
                 </div>
-            </div>
-
-            <div class="actions">
-                <button type="button" class="btn btn-primary" id="ed-save-btn">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
-                    </svg>
-                    保存修改
-                </button>
-                <button type="button" class="btn btn-ghost" id="ed-cancel-2" hidden>取消</button>
+</div>
+<div class="editor-meta-backdrop" id="ed-meta-backdrop" hidden></div>
+<div class="editor-body">
+                <div class="editor-toolbar">
+                    <button type="button" class="editor-tab active" data-editor-tab="edit" id="ed-editor-tab-edit">编辑</button>
+                    <button type="button" class="editor-tab" data-editor-tab="preview" id="ed-editor-tab-preview">预览</button>
+                    <span class="muted small editor-note" id="ed-editor-cdn-status"></span>
+                </div>
+                <div class="editor-split" id="ed-editor-split" data-active="edit">
+                    <div class="editor-pane" id="ed-editor-pane">
+                        <textarea id="ed-body" class="input textarea" rows="14" placeholder="正文…&#10;&#10;可拖拽图片到此处上传（仅支持 png/jpg/gif/webp，≤5MB）。" spellcheck="false"></textarea>
+                    </div>
+                    <div class="preview-pane" id="ed-preview-pane" aria-live="polite">
+                        <div class="markdown-preview" id="ed-markdown-preview"></div>
+                    </div>
+                </div>
+                <p class="hint editor-hint">Markdown 预览仅供参考；Hugo Shortcode 与 Goldmark 细节以最终构建为准。</p>
             </div>
 
             <!-- Stage 8: delete confirmation modal -->
@@ -490,8 +521,7 @@
                 </div>
             </div>
         </section>
-    </section>
-
+    </div>
     <section class="card info-card">
         <h3 class="info-title">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -529,6 +559,8 @@
 
 </main>
 
+<div class="toast-wrap global-toast" id="toast-wrap" aria-live="polite"></div>
+
 <footer class="footer">
     <p>Archai Blog Admin · V1 · 静态部署于阿里云 ECS · 通过 GitHub API 操作</p>
 </footer>
@@ -540,5 +572,6 @@
 <script src="/admin/js/markdown.js"></script>
 <script src="/admin/js/image.js"></script>
 <script src="/admin/js/app.js"></script>
+<script src="/admin/js/layout.js"></script>
 </body>
 </html>
