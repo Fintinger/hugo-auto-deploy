@@ -2697,3 +2697,47 @@ GitHub 仓库已用 slug leaf bundle 存储新文章（`content/posts/YYYY/MM/DD
 
 - 样式和兜底已生效，但评论真正加载仍需把后端从 Vercel 迁到国内。
 - 本轮未自动 commit / push。
+---
+
+## 2026-10-28（Admin 编辑器：单视图 / 置顶 / 新建页重构）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- 修复「编辑文章后再点新建文章，两个表单竖向叠加」：`app.js` 增加单一 workspace 视图状态机，`empty / selected / new / edit` 同一时间只显示一个；CSS 用 `[hidden] { display:none !important }` 兜底，避免 `.article-selected { display:flex }` 等组件样式压过 `hidden`。移除 `layout.js` 中基于 `setTimeout(160ms)` 的自动打开编辑逻辑（存在竞态且会绕过未保存确认）。
+- 新建文章改为与编辑共用的 editor-first 布局：sticky 顶栏、顶部保存草稿/发布、Markdown 编辑区、右侧 420px meta 抽屉；移除不起作用的 Slug 字段、底部重复动作条和长表单流。
+- Meta 抽屉：新建时自动打开；包含标题/日期/分类/标签；置顶/草稿/数学开关；编辑态的图片上传与危险操作移入抽屉；抽屉底部提供镜像按钮（编辑：关闭/保存；新建：取消/保存草稿/发布）；新建校验失败会自动重新打开抽屉。
+- 置顶设置：编辑「文章信息」新增置顶 checkbox，映射 Hugo Front Matter `weight: 1`；取消时删除 `weight`；新建文章的 `generateFrontMatter` 支持 `pinned`。不改变 Hugo 侧已有 `where Weight > 0` 的排序逻辑，不引入新字段。
+- 左侧栏合并：`connection-info` + `article-list-card` 包进 `admin-sidebar`，去掉两段独立 sticky 的间隙；文章树内部滚动，侧栏在桌面端满高。
+- 滚动条：全局 `scrollbar-width: thin` + `::-webkit-scrollbar` 自定义 thumb，浅色/深色两套颜色，覆盖文章树、编辑区、抽屉和页面。
+- 将 `toast-wrap` 移出连接后隐藏的 `#token-section`；保存、发布、删除、连接错误等 toast 现在在文章工作区可见。
+- 删除成功后回到 `empty` 视图并清理 edit 模式 pending 图片，改用全局 toast；打开删除确认前关闭 meta 抽屉，避免 modal 被抽屉压住。
+- `tools/admin-static-check.js` 将 `layout.js` 纳入检查；`docs/PROJECT_CONTEXT.md` 更新 Admin 模块与编辑器 UI 约束。
+
+### 修改文件
+
+- `static/admin/index.html`
+- `static/admin/css/admin.css`
+- `static/admin/js/app.js`
+- `static/admin/js/article.js`
+- `static/admin/js/layout.js`（新增）
+- `tools/admin-static-check.js`
+- `docs/PROJECT_CONTEXT.md`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- `node --check`：app.js / layout.js / article.js / frontmatter.js 全部通过。
+- 置顶 Front Matter 单测（vm 加载 frontmatter.js + article.js）：`weight: 1` 生成、`weight` 字段删除/追加、未置顶不写 weight 全部通过。
+- `node tools/admin-static-check.js`：**Failed: 0**（含 Hugo BUILD_OK、CSP/header 一致性、layout.js 语法）。
+- `.\hugo.exe`：**BUILD_OK**。
+- Edge headless 预览（临时文件已删除）：1440×1000 深/浅色编辑页、编辑 meta 抽屉、新建 meta 抽屉、480×900 移动端；确认单视图、侧栏合并、抽屉、底部按钮在视觉上正常。
+- Edge headless + 假 GitHub API 交互测试（临时页已删除，`data-e2e="PASS"`）：选中文章→编辑→置顶保存捕获 `weight: 1`；编辑未关闭时点新建→`edit` 隐藏、`new` 可见、selected 隐藏；新建置顶发布捕获 `weight: 1` 且 toast 可见；新建标题为空时发布→抽屉重新打开且标题错误可见。
+
+### 注意事项
+
+- 未修改 `themes/PaperMod/`、`content/`、`config.yml`、评论后端或 GitHub API 实现；未自动 commit / push。
+- 置顶沿用 `weight`；已置顶且 `weight > 1` 的文章保持原值，取消置顶则删除该字段。
+- 仍需用户在真实 GitHub PAT 环境做浏览器 E2E：编辑→新建不再叠加、置顶保存、发布/删除、抽屉内图片上传。
+- 本次只改前端布局与 admin 字段映射，部署安全头/CSP 未变。

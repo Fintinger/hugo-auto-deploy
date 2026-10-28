@@ -277,6 +277,7 @@ static/admin/
     ├── frontmatter.js    # Front Matter 解析 + 字段级 patch
     ├── markdown.js       # Markdown 渲染 + shortcode/math placeholder + XSS sanitizer
     ├── image.js          # 图片本地校验 / sanitize / 队列
+    ├── layout.js         # 新建 / 编辑的 meta 抽屉 + 抽屉内动作转发
     └── app.js            # 状态机 + UI 接线（new / edit / delete / image）
 ```
 
@@ -341,6 +342,12 @@ Git Data API:
 
 并发安全：`force: false` → 非 fast-forward 返回 422 → CONFLICT UI，绝不覆盖。
 
+**编辑器 UI 约束（2026-10-28）**：
+
+- `app.js` 的 workspace 只有四种视图：`empty / selected / new / edit`，同一时间只显示一个；`setWorkspaceView()` 是唯一的显隐入口，CSS 用 `[hidden] { display:none !important }` 兜底，避免 `.article-selected { display:flex }` 等规则让面板叠加。
+- 新建与编辑共用 editor-first 壳：顶部 sticky 操作条、Markdown 编辑区、右侧 420px meta 抽屉。图片上传和危险操作都收进 meta 抽屉。
+- 「置顶」不新增 Front Matter 字段，映射到 Hugo 的 `weight`：勾选写 `weight: 1`，取消则删除该字段；编辑时仅在布尔状态变化时 patch，未知字段仍由 `FrontMatter.patch` 保留。
+
 ### Admin 模块职责
 
 | 模块 | 职责 | 不应该做什么 |
@@ -351,7 +358,8 @@ Git Data API:
 | `frontmatter.js` | parseFrontMatter (识别 BOM/CRLF) / extractFields / patchFrontMatter (字段级) | 网络调用、生成整篇文章 |
 | `markdown.js` | shortcode/math 预处理 + marked + sanitize (DOMParser allowlist) + KaTeX + highlight | 网络调用 |
 | `image.js` | validateImage / sanitizeFilename / generateUniqueName / computeTargetPath / buildMarkdown / insertAtCursor | 网络调用、DOM 操作 |
-| `app.js` | 状态机（new / edit / delete / image）+ UI 接线 | GitHub API 实现细节（封装在 github-api.js）|
+| `layout.js` | 新建 / 编辑的 meta 抽屉开关，抽屉内保存/关闭按钮转发 | 业务状态、GitHub API |
+| `app.js` | 状态机（new / edit / delete / image）+ 单一 workspace 视图（empty / selected / new / edit）+ UI 接线 | GitHub API 实现细节（封装在 github-api.js）|
 
 
 本项目采用 **AI 辅助长期维护模式**：文档驱动协作。AI 每次改动前先阅读协作文档理解上下文，改动后记录日志、输出 Git 提交建议并等待用户确认，最后由用户决定是否提交。
