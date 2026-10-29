@@ -2779,4 +2779,44 @@ GitHub 仓库已用 slug leaf bundle 存储新文章（`content/posts/YYYY/MM/DD
 - **需要把 `deploy/nginx/blog.conf` 同步到服务器**：`/etc/nginx/sites-available/blog` 替换后 `nginx -t` 通过再 `systemctl reload nginx`，否则线上仍是 nginx 默认 404。
 - 线上核对：`curl -sI https://blog.archai.space/this-path-does-not-exist | head -n 1` 应为 `HTTP/2 404`，且响应正文包含「这条路径没有内容」。
 - 404 页使用现有全站搜索；若后续改搜索触发方式，需要同步保留 `/search/` 回退链接。
-- 未修改 `themes/PaperMod/`、`content/`、`config.yml`；未 commit / push。
+- 未修改 `themes/PaperMod/`、`content/`、`config.yml`；已提交并推送：`6ce8410`、`6c9bf2d`。
+---
+
+## 2026-10-29（Admin 写作专注模式 + 编辑/预览同步滚动）
+
+- 模型：deepseek-flash
+
+### 修改内容
+
+- 新增写作专注模式：不复制编辑器 DOM，直接把当前 `.editor-shell`（新建或编辑）提升为 `position: fixed; inset: 0` 的全屏遮罩层；`body.focus-mode` 下隐藏顶栏、左侧文章栏、页脚、空工作区和 info-card。
+- 专注模式保留原编辑器的保存/取消/meta 抽屉；抽屉和删除弹窗仍是固定定位子元素，层级正常。进入专注时先关闭已打开的 meta 抽屉；`setWorkspaceView()` 切出 `edit/new` 时自动退出，避免表单关闭后 body 仍锁滚动。
+- 新建/编辑工具栏各增加一个 `[data-focus-toggle]`「专注 / 退出专注」按钮；`aria-pressed` 同步状态；`Esc` 退出；`Ctrl/⌘+Shift+F` 切换。Esc 使用 capture 阶段监听，meta 抽屉打开时只关闭抽屉，不退出专注。
+- 编辑/预览双向滚动同步：textarea 与 `.preview-pane` 按 `scrollTop / (scrollHeight - clientHeight)` 的比例双向同步；目标差值 <2px 时跳过，防止程序性滚动反向触发。预览重新渲染完成后重新对齐；专注模式高度变化后下一帧重算。
+- 编辑器 textarea 禁止手动纵向 resize，两个 pane 高度保持由 CSS 控制，避免拖高编辑区后同步比例失真。
+- 专注模式桌面最大内容宽 1180px；≤899px 使用更紧凑的 padding 和高度；移动端仍复用原有编辑/预览单栏切换。
+
+### 修改文件
+
+- `static/admin/index.html`
+- `static/admin/css/admin.css`
+- `static/admin/js/app.js`
+- `docs/PROJECT_CONTEXT.md`
+- `docs/CHANGELOG_AI.md`（本条目）
+
+### 测试结果
+
+- `node --check static/admin/js/app.js` / `layout.js`：通过。
+- `node tools/admin-static-check.js`：**Failed: 0**。
+- `.\hugo.exe`：**BUILD_OK**。
+- Edge headless 桌面 1440×1000 E2E（假 GitHub API，临时文件已删除）：
+  - 编辑区滚动到 60% → 预览 0.600；预览反向滚动到 25% → 编辑区 0.250。
+  - 点击专注：`body.focus-mode` 存在、编辑表单 `position: fixed`、顶栏 `display: none`、按钮 `aria-pressed=true`；Esc 后恢复。
+  - 原有编辑置顶保存、新建置顶发布、校验抽屉重开等用例全部通过；`data-e2e="PASS"`，`failed: 0`。
+- Edge headless 视觉检查：1440×1000 专注双栏、800×900 窄屏、500×900 单栏、专注状态下打开 meta 抽屉；布局正常。
+- 临时 E2E 页面和 8791 mock server 已清理；本地预览服务在 1313。
+
+### 注意事项
+
+- 专注模式是 CSS 全屏层，不依赖 Fullscreen API；浏览器地址栏仍在，但站内 chrome 全部隐藏。若后续要连浏览器 UI 一起隐藏，再在用户手势内调 `requestFullscreen()` 并处理失败回退。
+- 滚动同步是比例同步，不是源码行号级映射；超长代码块/图片导致两侧高度差异很大时仍可能有少量视觉漂移，可后续用 `data-source-line` 做精确映射。
+- 未修改 `themes/PaperMod/`、`content/`、`config.yml`；已按用户要求提交并推送。

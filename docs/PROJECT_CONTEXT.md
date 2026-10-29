@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md
 
 > 本项目长期知识库。任何 AI 模型首次接手本仓库时，请先完整阅读本文件。
-> 最后更新：2026-10-27（部署收尾：阿里云 ECS 为唯一线上路径、Vercel 退役、`/admin` 安全头迁至 nginx）
+> 最后更新：2026-10-29（Admin 写作专注模式 + 编辑/预览双向滚动同步）
 
 ---
 
@@ -349,6 +349,8 @@ Git Data API:
 - `app.js` 的 workspace 只有四种视图：`empty / selected / new / edit`，同一时间只显示一个；`setWorkspaceView()` 是唯一的显隐入口，CSS 用 `[hidden] { display:none !important }` 兜底，避免 `.article-selected { display:flex }` 等规则让面板叠加。
 - 新建与编辑共用 editor-first 壳：顶部 sticky 操作条、Markdown 编辑区、右侧 420px meta 抽屉。图片上传和危险操作都收进 meta 抽屉。
 - 「置顶」不新增 Front Matter 字段，映射到 Hugo 的 `weight`：勾选写 `weight: 1`，取消则删除该字段；编辑时仅在布尔状态变化时 patch，未知字段仍由 `FrontMatter.patch` 保留。
+- 写作专注模式（2026-10-29）：当前 `.editor-shell` 不复制 DOM，只通过 `body.focus-mode` 变成 `position: fixed; inset: 0` 的全屏层；隐藏顶栏、文章栏、页脚和空工作区。meta 抽屉仍是固定定位子元素，专注状态下可正常打开。工具栏 `[data-focus-toggle]` 切换，`Esc` 退出，`Ctrl/⌘+Shift+F` 切换；`setWorkspaceView()` 离开 `edit/new` 时自动退出。
+- 编辑/预览同步（2026-10-29）：textarea 与 `.preview-pane` 按各自 `scrollTop / (scrollHeight - clientHeight)` 的比例双向同步；目标差值小于 2px 时跳过，防止程序性滚动回弹。预览重新渲染后从编辑区重新对齐；移动端单栏切换时也能在渲染后同步。
 
 ### Admin 模块职责
 
