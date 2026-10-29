@@ -879,6 +879,72 @@
             document.body.classList.toggle('workspace-editing', view === 'edit' || view === 'new');
             document.body.setAttribute('data-workspace-view', view);
         }
+        if (view !== 'edit' && view !== 'new' && isFocusMode()) {
+            setFocusMode(false);
+        }
+    }
+
+    function isFocusMode() {
+        return !!(document.body && document.body.classList.contains('focus-mode'));
+    }
+
+    /**
+     * Proportional scroll sync: textarea and preview are different
+     * scroll containers, so align by their scrollable ratio. The small
+     * tolerance prevents a programmatic scroll from bouncing back.
+     */
+    function syncPaneScroll(from, to) {
+        if (!from || !to) return;
+        var fromMax = from.scrollHeight - from.clientHeight;
+        var toMax = to.scrollHeight - to.clientHeight;
+        if (fromMax <= 0 || toMax <= 0) return;
+        var next = (from.scrollTop / fromMax) * toMax;
+        if (Math.abs(to.scrollTop - next) < 2) return;
+        to.scrollTop = next;
+    }
+
+    function bindScrollSync(source, target) {
+        if (!source || !target) return;
+        source.addEventListener('scroll', function () {
+            syncPaneScroll(source, target);
+        }, { passive: true });
+        target.addEventListener('scroll', function () {
+            syncPaneScroll(target, source);
+        }, { passive: true });
+    }
+
+    function syncActiveEditorScroll() {
+        if (isEditFormOpen()) {
+            syncPaneScroll(els.edBody, els.edPreviewPane);
+        } else if (isNewFormOpen()) {
+            syncPaneScroll(els.naBody, els.previewPane);
+        }
+    }
+
+    function updateFocusButtons() {
+        var on = isFocusMode();
+        var buttons = document.querySelectorAll('[data-focus-toggle]');
+        for (var i = 0; i < buttons.length; i++) {
+            buttons[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+            buttons[i].textContent = on ? '退出专注' : '专注';
+            buttons[i].title = on ? '退出专注模式（Esc）' : '专注模式（Ctrl/⌘+Shift+F）';
+        }
+    }
+
+    function setFocusMode(on) {
+        on = !!on;
+        if (on && !isNewFormOpen() && !isEditFormOpen()) return;
+        if (on) {
+            closeMetaDrawer('edit');
+            closeMetaDrawer('new');
+        }
+        if (document.body) document.body.classList.toggle('focus-mode', on);
+        updateFocusButtons();
+        if (on) {
+            window.requestAnimationFrame(function () {
+                syncActiveEditorScroll();
+            });
+        }
     }
 
     function openMetaDrawer(kind) {
@@ -1773,6 +1839,7 @@ function loadArticleForEdit(path) {
         }
         result.html = renderPreviewWithPending(result.html, 'edit');
         els.edMarkdownPreview.innerHTML = result.html;
+        syncPaneScroll(els.edBody, els.edPreviewPane);
     }
 
     function setEditActiveTab(tab) {
@@ -2123,6 +2190,7 @@ function updateEditCdnStatus() {
         }
         setEditActiveTab('edit');
         updateEditCdnStatus();
+        bindScrollSync(els.edBody, els.edPreviewPane);
     }
 
     /* ============================================
@@ -3113,6 +3181,7 @@ function addPendingUpload(file, formMode) {
         }
         result.html = renderPreviewWithPending(result.html, 'new');
         els.markdownPreview.innerHTML = result.html;
+        syncPaneScroll(els.naBody, els.previewPane);
     }
 
     function setEditorActiveTab(tab) {
@@ -3143,6 +3212,34 @@ function addPendingUpload(file, formMode) {
         }
     }
 
+    function wireFocusMode() {
+        var buttons = document.querySelectorAll('[data-focus-toggle]');
+        for (var i = 0; i < buttons.length; i++) {
+            buttons[i].addEventListener('click', function () {
+                setFocusMode(!isFocusMode());
+            });
+        }
+        // Capture phase so Escape closes the meta drawer first; the drawer
+        // handler runs later in the bubble phase.
+        document.addEventListener('keydown', function (e) {
+            var isShortcut = (e.metaKey || e.ctrlKey) && e.shiftKey &&
+                String(e.key || '').toLowerCase() === 'f';
+            if (isShortcut) {
+                if (!isNewFormOpen() && !isEditFormOpen()) return;
+                e.preventDefault();
+                setFocusMode(!isFocusMode());
+                return;
+            }
+            if (e.key !== 'Escape' || !isFocusMode()) return;
+            if (document.querySelector(
+                '.editor-meta-drawer:not([hidden]), #ed-delete-modal:not([hidden])'
+            )) return;
+            e.preventDefault();
+            setFocusMode(false);
+        }, true);
+        updateFocusButtons();
+    }
+
     function wireMarkdownEditor() {
         // Render preview when body changes (debounced).
         // The previous guard `active === 'preview'` skipped rendering on
@@ -3167,6 +3264,7 @@ function addPendingUpload(file, formMode) {
         // Default: desktop shows both (CSS); mobile defaults to edit.
         setEditorActiveTab('edit');
         updateCdnStatus();
+        bindScrollSync(els.naBody, els.previewPane);
     }
 
     /* ============================================
@@ -3223,6 +3321,7 @@ function addPendingUpload(file, formMode) {
         wireArticleList();
         wireNewArticle();
         wireEditForm();
+        wireFocusMode();
         setupImageSection('new');
         setupImageSection('edit');
         setWorkspaceView('empty');
